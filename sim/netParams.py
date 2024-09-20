@@ -384,7 +384,7 @@ if cfg.addConn and cfg.EEGain > 0.0:
             for cellModel in cellModels:
                 ruleLabel = 'EE_'+cellModel+'_'+str(ipre)+'_'+str(ipost)
                 netParams.connParams[ruleLabel] = { 
-                    'preConds': {'cellType': ['IT', 'PT'], 'ynorm': list(preBin)}, 
+                    'preConds': {'pop': ['IT2','IT4','IT5A','IT5B','PT5B','IT6'], 'ynorm': list(preBin)}, 
                     'postConds': {'cellModel': cellModel, 'cellType': 'PT', 'ynorm': list(postBin)},
                     'synMech': ['AMPA','NMDA'],
                     'probability': pmat[('W+AS_norm', 'PT', 'L5B')][ipost,ipre],
@@ -409,10 +409,10 @@ else:
 
 if cfg.addConn and (cfg.IEGain > 0.0 or cfg.IIGain > 0.0):
     # Local, intralaminar only; all-to-all but distance-based; high weights; L5A/B->L5A/B
-    preCellTypes = ['SOM', 'SOM', 'SOM', 'PV', 'PV', 'PV']
-    ynorms = [(layer['2'][0],layer['4'][1]), (layer['5A'][0],layer['5B'][1]), (layer['6'][0],layer['6'][1])]*2
-    IEweights = cfg.IEweights * 2  # [I->E2/3+4, I->E5, I->E6] weights (Note * 2 is repeat list operator)
-    IEdisynBiases = [None, cfg.IEdisynapticBias, cfg.IEdisynapticBias, None, cfg.IEdisynapticBias, cfg.IEdisynapticBias]
+    prePopTypes = ['SOM2','SOM5A', 'SOM5B', 'SOM6', 'PV2','PV5A', 'PV5B', 'PV6']
+    ynorms = [(layer['2'][0],layer['4'][1]), (layer['5A'][0],layer['5B'][1]), (layer['5A'][0],layer['5B'][1]), (layer['6'][0],layer['6'][1])]*2
+    IEweights = (cfg.IEweights[:1] + (cfg.IEweights[1:2] * 2) + cfg.IEweights[2:]) * 2  # [I->E2/3+4, I->E5, I->E6] weights (Note * 2 is repeat list operator)
+    IEdisynBiases = [None, cfg.IEdisynapticBias, cfg.IEdisynapticBias, cfg.IEdisynapticBias, None, cfg.IEdisynapticBias, cfg.IEdisynapticBias, cfg.IEdisynapticBias]
     disynapticBias = None  # default, used for I->I
 
     # preCellTypes = ['SOM', 'PV']
@@ -423,25 +423,28 @@ if cfg.addConn and (cfg.IEGain > 0.0 or cfg.IIGain > 0.0):
     # IEdisynBiases = [cfg.IEdisynapticBias, cfg.IEdisynapticBias]
     # disynapticBias = None  # default, used for I->I
 
-    for i,(preCellType, ynorm, IEweight, IEdisynBias) in enumerate(zip(preCellTypes, ynorms, IEweights, IEdisynBiases)):
+    for i,(prePop, ynorm, IEweight, IEdisynBias) in enumerate(zip(prePopTypes, ynorms, IEweights, IEdisynBiases)):
             for cellModel in cellModels:
                 disynapticBias = IEdisynBias
-                if preCellType == 'PV':             # PV->E
+                if prePop.startswith('PV'):             # PV->E
                     weight = IEweight * cfg.IPTGain * cfg.PVEGain
                     synMech = PVSynMech
                     sec = 'perisom'
-                else:                           # SOM->E
+                elif prePop.startswith('SOM'):                           # SOM->E
                     weight = IEweight * cfg.IPTGain * cfg.SOMEGain
                     synMech = SOMESynMech
                     sec = 'spiny'
                     synWeightFraction = cfg.synWeightFractionSOME
+                else:
+                  continue
+                
                 if cellModel == 'HH_full':
                     weight = weight * cfg.IFullGain
 
 
                 ruleLabel = 'I_'+cellModel+'_'+str(i)
                 netParams.connParams[ruleLabel] = {
-                    'preConds': {'cellType': preCellType, 'ynorm': ynorm},
+                    'preConds': {'pop': prePop, 'ynorm': ynorm},
                     'postConds': {'cellModel': cellModel, 'cellType': 'PT', 'ynorm': ynorm},
                     'synMech': synMech,
                     'probability': '1.0 * exp(-dist_3D_border/probLambda)',
@@ -542,7 +545,7 @@ if cfg.addSubConn:
     #------------------------------------------------------------------------------
     # PV->E; perisomatic (no sCRACM)
     netParams.subConnParams['PV->E'] = {
-        'preConds': {'cellType': 'PV'}, 
+        'preConds': {'pop': ['PV2','PV5A', 'PV5B', 'PV6']}, 
         'postConds': {'cellType': 'PT'},  
         'sec': 'perisom', 
         'density': 'uniform'} 
@@ -551,7 +554,7 @@ if cfg.addSubConn:
     #------------------------------------------------------------------------------
     # SOM->E; apical dendrites (no sCRACM)
     netParams.subConnParams['SOM->E'] = {
-        'preConds': {'cellType': 'SOM'}, 
+        'preConds': {'pop': ['SOM2','SOM5A', 'SOM5B', 'SOM6']}, 
         'postConds': {'cellType': 'PT'},  
         'sec': 'apicdend',
         'groupSynMechs': SOMESynMech,
