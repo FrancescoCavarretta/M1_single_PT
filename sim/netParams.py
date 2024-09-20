@@ -46,16 +46,9 @@ netParams.propVelocity = 500.0 # propagation velocity (um/ms)
 netParams.probLambda = 100.0  # length constant (lambda) for connection probability decay (um)
 netParams.defineCellShapes = True  # convert stylized geoms to 3d points
 
-
-# special condition to change Kgbar together with ih when running batch
-# note min Kgbar is assumed to be 0.5, so this is set here as an offset 
-if cfg.makeKgbarFactorEqualToNewFactor:
-    cfg.KgbarFactor = 0.5 + cfg.modifyMechs['newFactor']
-
 #------------------------------------------------------------------------------
 # Cell parameters
 #------------------------------------------------------------------------------
-cellModels = ['HH_simple', 'HH_reduced', 'HH_full']
 layer = {'1':[0.0, 0.1], '2': [0.1,0.29], '4': [0.29,0.37], '5A': [0.37,0.47], '24':[0.1,0.37], '5B': [0.47,0.8], '6': [0.8,1.0], 
 'longTPO': [2.0,2.1], 'longTVL': [2.1,2.2], 'longS1': [2.2,2.3], 'longS2': [2.3,2.4], 'longcM1': [2.4,2.5], 'longM2': [2.5,2.6], 'longOC': [2.6,2.7]}  # normalized layer boundaries
 
@@ -64,167 +57,9 @@ netParams.correctBorder = {'threshold': [cfg.correctBorderThreshold, cfg.correct
 
 #------------------------------------------------------------------------------
 ## Load cell rules previously saved using netpyne format
-cellParamLabels = ['IT2_reduced', 'IT4_reduced', 'IT5A_reduced', 'IT5B_reduced', 'PT5B_reduced',
-    'IT6_reduced', 'CT6_reduced', 'PV_simple', 'SOM_simple', 'IT5A_full']# 'VIP_reduced', 'NGF_simple','PT5B_full'] #  # list of cell rules to load from file
-loadCellParams = cellParamLabels
 saveCellParams = False #True
 
-for ruleLabel in loadCellParams:
-    netParams.loadCellParamsRule(label=ruleLabel, fileName='cells/'+ruleLabel+'_cellParams.pkl')
-    
-    # Adapt K gbar
-    if ruleLabel in ['IT2_reduced', 'IT4_reduced', 'IT5A_reduced', 'IT5B_reduced', 'IT6_reduced', 'CT6_reduced', 'IT5A_full']:
-        cellRule = netParams.cellParams[ruleLabel]
-        for secName in cellRule['secs']:
-            for kmech in [k for k in cellRule['secs'][secName]['mechs'].keys() if k.startswith('k') and k!='kBK']:
-                cellRule['secs'][secName]['mechs'][kmech]['gbar'] *= cfg.KgbarFactor 
-
-#------------------------------------------------------------------------------
-# Specification of cell rules not previously loaded
-# Includes importing from hoc template or python class, and setting additional params
-
-#------------------------------------------------------------------------------
-# Reduced cell model params (6-comp) 
-reducedCells = {  # layer and cell type for reduced cell models
-    'IT2_reduced':  {'layer': '2',  'cname': 'CSTR6', 'carg': 'BS1578'}, 
-    'IT4_reduced':  {'layer': '4',  'cname': 'CSTR6', 'carg': 'BS1578'},
-    'IT5A_reduced': {'layer': '5A', 'cname': 'CSTR6', 'carg': 'BS1579'},
-    'IT5B_reduced': {'layer': '5B', 'cname': 'CSTR6', 'carg': 'BS1579'},
-    'PT5B_reduced': {'layer': '5B', 'cname': 'SPI6',  'carg':  None},
-    'IT6_reduced':  {'layer': '6',  'cname': 'CSTR6', 'carg': 'BS1579'},
-    'CT6_reduced':  {'layer': '6',  'cname': 'CSTR6', 'carg': 'BS1578'}}
-
-reducedSecList = {  # section Lists for reduced cell model
-    'alldend':  ['Adend1', 'Adend2', 'Adend3', 'Bdend'],
-    'spiny':    ['Adend1', 'Adend2', 'Adend3', 'Bdend'],
-    'apicdend': ['Adend1', 'Adend2', 'Adend3'],
-    'perisom':  ['soma']}
-
-for label, p in reducedCells.items():  # create cell rules that were not loaded 
-    if label not in loadCellParams:
-        cellRule = netParams.importCellParams(label=label, conds={'cellType': label[0:2], 'cellModel': 'HH_reduced', 'ynorm': layer[p['layer']]},
-        fileName='cells/'+p['cname']+'.py', cellName=p['cname'], cellArgs={'params': p['carg']} if p['carg'] else None)
-        dendL = (layer[p['layer']][0]+(layer[p['layer']][1]-layer[p['layer']][0])/2.0) * cfg.sizeY  # adapt dend L based on layer
-        for secName in ['Adend1', 'Adend2', 'Adend3', 'Bdend']: cellRule['secs'][secName]['geom']['L'] = dendL / 3.0  # update dend L
-        for k,v in reducedSecList.items(): cellRule['secLists'][k] = v  # add secLists
-        netParams.addCellParamsWeightNorm(label, 'conn/'+label+'_weightNorm.pkl', threshold=cfg.weightNormThreshold)  # add weightNorm
-
-        # set 3d points
-        offset, prevL = 0, 0
-        somaL = netParams.cellParams[label]['secs']['soma']['geom']['L']
-        for secName, sec in netParams.cellParams[label]['secs'].items():
-            sec['geom']['pt3d'] = []
-            if secName in ['soma', 'Adend1', 'Adend2', 'Adend3']:  # set 3d geom of soma and Adends
-                sec['geom']['pt3d'].append([offset+0, prevL, 0, sec['geom']['diam']])
-                prevL = float(prevL + sec['geom']['L'])
-                sec['geom']['pt3d'].append([offset+0, prevL, 0, sec['geom']['diam']])
-            if secName in ['Bdend']:  # set 3d geom of Bdend
-                sec['geom']['pt3d'].append([offset+0, somaL, 0, sec['geom']['diam']])
-                sec['geom']['pt3d'].append([offset+sec['geom']['L'], somaL, 0, sec['geom']['diam']])        
-            if secName in ['axon']:  # set 3d geom of axon
-                sec['geom']['pt3d'].append([offset+0, 0, 0, sec['geom']['diam']])
-                sec['geom']['pt3d'].append([offset+0, -sec['geom']['L'], 0, sec['geom']['diam']])   
-
-        if saveCellParams: netParams.saveCellParamsRule(label=label, fileName='cells/'+label+'_cellParams.pkl')
-
-
-#------------------------------------------------------------------------------
-## PT5B full cell model params (700+ comps)
-if 'PT5B_full' not in loadCellParams:
-    ihMod2str = {'harnett': 1, 'kole': 2, 'migliore': 3}
-    cellRule = netParams.importCellParams(label='PT5B_full', conds={'cellType': 'PT', 'cellModel': 'HH_full'},
-      fileName='cells/PTcell.hoc', cellName='PTcell', cellArgs=[ihMod2str[cfg.ihModel], cfg.ihSlope], somaAtOrigin=True)
-    nonSpiny = ['apic_0', 'apic_1']
-    netParams.addCellParamsSecList(label='PT5B_full', secListName='perisom', somaDist=[0, 50])  # sections within 50 um of soma
-    netParams.addCellParamsSecList(label='PT5B_full', secListName='below_soma', somaDistY=[-600, 0])  # sections within 0-300 um of soma
-    for sec in nonSpiny: cellRule['secLists']['perisom'].remove(sec)
-    cellRule['secLists']['alldend'] = [sec for sec in cellRule.secs if ('dend' in sec or 'apic' in sec)] # basal+apical
-    cellRule['secLists']['apicdend'] = [sec for sec in cellRule.secs if ('apic' in sec)] # apical
-    cellRule['secLists']['spiny'] = [sec for sec in cellRule['secLists']['alldend'] if sec not in nonSpiny]
-    # Adapt ih params based on cfg param
-    for secName in cellRule['secs']:
-        for mechName,mech in cellRule['secs'][secName]['mechs'].items():
-            if mechName in ['ih','h','h15', 'hd']: 
-                mech['gbar'] = [g*cfg.ihGbar for g in mech['gbar']] if isinstance(mech['gbar'],list) else mech['gbar']*cfg.ihGbar
-                if cfg.ihModel == 'migliore':   
-                    mech['clk'] = cfg.ihlkc  # migliore's shunt current factor
-                    mech['elk'] = cfg.ihlke  # migliore's shunt current reversal potential
-                if secName.startswith('dend'): 
-                    mech['gbar'] *= cfg.ihGbarBasal  # modify ih conductance in soma+basal dendrites
-                    mech['clk'] *= cfg.ihlkcBasal  # modify ih conductance in soma+basal dendrites
-                if secName in cellRule['secLists']['below_soma']: #secName.startswith('dend'): 
-                    mech['clk'] *= cfg.ihlkcBelowSoma  # modify ih conductance in soma+basal dendrites
-
-        # Adapt K gbar
-        for kmech in [k for k in cellRule['secs'][secName]['mechs'].keys() if k.startswith('k') and k!='kBK']:
-            cellRule['secs'][secName]['mechs'][kmech]['gbar'] *= cfg.KgbarFactor 
-
-    # Reduce dend Na to avoid dend spikes (compensate properties by modifying axon params)
-    for secName in cellRule['secLists']['alldend']:
-        cellRule['secs'][secName]['mechs']['nax']['gbar'] = 0.0153130368342 * cfg.dendNa # 0.25 
-    
-                
-    cellRule['secs']['soma']['mechs']['nax']['gbar'] = 0.0153130368342  * cfg.somaNa
-    cellRule['secs']['axon']['mechs']['nax']['gbar'] = 0.0153130368342  * cfg.axonNa # 11  
-    cellRule['secs']['axon']['geom']['Ra'] = 137.494564931 * cfg.axonRa # 0.005
-    # Remove Na (TTX)
-    if cfg.removeNa:
-        for secName in cellRule['secs']: cellRule['secs'][secName]['mechs']['nax']['gbar'] = 0.0
-    netParams.addCellParamsWeightNorm('PT5B_full', 'conn/PT5B_full_weightNorm.pkl', threshold=cfg.weightNormThreshold)  # load weight norm
-    if saveCellParams: netParams.saveCellParamsRule(label='PT5B_full', fileName='cells/PT5B_full_cellParams.pkl')
-
-
-#------------------------------------------------------------------------------
-## IT5A full cell model params (700+ comps)
-if 'IT5A_full' not in loadCellParams:
-    cellRule = netParams.importCellParams(label='IT5A_full', conds={'cellType': 'IT', 'cellModel': 'HH_full', 'ynorm': layer['5A']},
-      fileName='cells/ITcell.py', cellName='ITcell', cellArgs={'params': 'BS1579'}, somaAtOrigin=True)
-    netParams.renameCellParamsSec(label='IT5A_full', oldSec='soma_0', newSec='soma')
-    netParams.addCellParamsWeightNorm('IT5A_full', 'conn/IT_full_BS1579_weightNorm.pkl', threshold=cfg.weightNormThreshold) # add weightNorm before renaming soma_0
-    netParams.addCellParamsSecList(label='IT5A_full', secListName='perisom', somaDist=[0, 50])  # sections within 50 um of soma
-    cellRule['secLists']['alldend'] = [sec for sec in cellRule.secs if ('dend' in sec or 'apic' in sec)] # basal+apical
-    cellRule['secLists']['apicdend'] = [sec for sec in cellRule.secs if ('apic' in sec)] # basal+apical
-    cellRule['secLists']['spiny'] = [sec for sec in cellRule['secLists']['alldend'] if sec not in ['apic_0', 'apic_1']]
-    # Adapt K gbar
-    for secName in cellRule['secs']:
-        for kmech in [k for k in cellRule['secs'][secName]['mechs'].keys() if k.startswith('k') and k!='kBK']:
-            cellRule['secs'][secName]['mechs'][kmech]['gbar'] *= cfg.KgbarFactor 
-    if saveCellParams: netParams.saveCellParamsRule(label='IT5A_full', fileName='cells/IT5A_full_cellParams.pkl')
-
-
-#------------------------------------------------------------------------------
-## IT5B full cell model params (700+ comps) - not used
-# if 'IT5B_full' not in loadCellParams:
-#   cellRule = netParams.importCellParams(label='IT5B_full', conds={'cellType': 'IT', 'cellModel': 'HH_full', 'ynorm': layer['5B']},
-#     fileName='cells/ITcell.py', cellName='ITcell', cellArgs={'params': 'BS1579'}, somaAtOrigin=True)
-#   netParams.addCellParamsSecList(label='IT5B_full', secListName='perisom', somaDist=[0, 50])  # sections within 50 um of soma
-#   cellRule['secLists']['alldend'] = [sec for sec in cellRule.secs if ('dend' in sec or 'apic' in sec)] # basal+apical
-#   cellRule['secLists']['apicdend'] = [sec for sec in cellRule.secs if ('apic' in sec)] # basal+apical
-#   cellRule['secLists']['spiny'] = [sec for sec in cellRule['secLists']['alldend'] if sec not in ['apic_0', 'apic_1']]
-#   netParams.addCellParamsWeightNorm('IT5B_full', 'conn/IT_full_BS1579_weightNorm.pkl')
-#   netParams.saveCellParamsRule(label='IT5B_full', fileName='cells/IT5B_full_cellParams.pkl')
-
-
-#------------------------------------------------------------------------------
-## PV cell params (3-comp)
-if 'PV_simple' not in loadCellParams:
-    cellRule = netParams.importCellParams(label='PV_simple', conds={'cellType':'PV', 'cellModel':'HH_simple'}, 
-      fileName='cells/FS3.hoc', cellName='FScell1', cellInstance = True)
-    cellRule['secLists']['spiny'] = ['soma', 'dend']
-    netParams.addCellParamsWeightNorm('PV_simple', 'conn/PV_simple_weightNorm.pkl', threshold=cfg.weightNormThreshold)
-    if saveCellParams: netParams.saveCellParamsRule(label='PV_simple', fileName='cells/PV_simple_cellParams.pkl')
-
-
-#------------------------------------------------------------------------------
-## SOM cell params (3-comp)
-if 'SOM_simple' not in loadCellParams:
-    cellRule = netParams.importCellParams(label='SOM_simple', conds={'cellType':'SOM', 'cellModel':'HH_simple'}, 
-      fileName='cells/LTS3.hoc', cellName='LTScell1', cellInstance = True)
-    cellRule['secLists']['spiny'] = ['soma', 'dend']
-    netParams.addCellParamsWeightNorm('SOM_simple', 'conn/SOM_simple_weightNorm.pkl', threshold=cfg.weightNormThreshold)
-    if saveCellParams: netParams.saveCellParamsRule(label='SOM_simple', fileName='cells/SOM_simple_cellParams.pkl')
-
-
+netParams.loadCellParamsRule(label='PT5B_full', fileName='cells/PT5B_full_cellParams.pkl')
 
 
 #------------------------------------------------------------------------------
@@ -236,25 +71,19 @@ if 'SOM_simple' not in loadCellParams:
 with open('cells/cellDensity.pkl', 'rb') as fileObj: density = pickle.load(fileObj)['density']
 
 ## Local populations
+noise = cfg.noiseShort
+start = cfg.startShort
 
-netParams.popParams['IT2']  =   {'cellModel': cfg.cellmod['IT2'],  'cellType': 'IT', 'ynormRange': layer['2'], 'density': density[('M1','E')][0]}
-netParams.popParams['SOM2'] =   {'cellModel': 'HH_simple',         'cellType': 'SOM','ynormRange': layer['24'], 'density': density[('M1','SOM')][5]}
-netParams.popParams['PV2']  =   {'cellModel': 'HH_simple',         'cellType': 'PV', 'ynormRange': layer['24'], 'density': density[('M1','PV')][5]}
-netParams.popParams['IT4']  =   {'cellModel': cfg.cellmod['IT4'],  'cellType': 'IT', 'ynormRange': layer['4'], 'density': density[('M1','E')][1]}
-netParams.popParams['IT5A'] =   {'cellModel': cfg.cellmod['IT5A'], 'cellType': 'IT', 'ynormRange': layer['5A'], 'density': density[('M1','E')][2]}
-netParams.popParams['SOM5A'] =  {'cellModel': 'HH_simple',         'cellType': 'SOM','ynormRange': layer['5A'], 'density': density[('M1','SOM')][2]}
-netParams.popParams['PV5A']  =  {'cellModel': 'HH_simple',         'cellType': 'PV', 'ynormRange': layer['5A'], 'density': density[('M1','PV')][2]}
-netParams.popParams['IT5B'] =   {'cellModel': cfg.cellmod['IT5B'], 'cellType': 'IT', 'ynormRange': layer['5B'], 'density': 0.5*density[('M1','E')][3]}
-netParams.popParams['PT5B'] =   {'cellModel': cfg.cellmod['PT5B'], 'cellType': 'PT', 'ynormRange': layer['5B'], 'density': 0.5*density[('M1','E')][3]}
-netParams.popParams['SOM5B'] =  {'cellModel': 'HH_simple',         'cellType': 'SOM','ynormRange': layer['5B'], 'density': density[('M1','SOM')][3]}
-netParams.popParams['PV5B']  =  {'cellModel': 'HH_simple',         'cellType': 'PV', 'ynormRange': layer['5B'], 'density': density[('M1','PV')][3]}
-netParams.popParams['IT6']  =   {'cellModel': cfg.cellmod['IT6'],  'cellType': 'IT', 'ynormRange': layer['6'],  'density': 0.5*density[('M1','E')][4]}
-netParams.popParams['CT6']  =   {'cellModel': cfg.cellmod['CT6'],  'cellType': 'CT', 'ynormRange': layer['6'],  'density': 0.5*density[('M1','E')][4]}
-netParams.popParams['SOM6'] =   {'cellModel': 'HH_simple',         'cellType': 'SOM','ynormRange': layer['6'],  'density': density[('M1','SOM')][4]}
-netParams.popParams['PV6']  =   {'cellModel': 'HH_simple',         'cellType': 'PV', 'ynormRange': layer['6'],  'density': density[('M1','PV')][4]}
+## Intracortical inputs
+shortPops = [('IT2', '2', 1, ('M1','E'), 0), ('SOM2', '24', 1, ('M1','SOM'), 5), ('PV2', '24', 1, ('M1','PV'), 5), ('IT4', '4', 1, ('M1','E'), 1), ('IT5A', '5A', 1, ('M1','E'), 2), \
+             ('SOM5A', '5A', 1, ('M1','SOM'), 2), ('PV5A', '5A', 1, ('M1','PV'), 2), ('IT5B', '5B', 0.5, ('M1','E'), 3), ('PT5B', '5B', 0.5, ('M1','E'), 3), ('SOM5B', '5B', 1, ('M1','SOM'), 3), \
+             ('PV5B', '5B', 1, ('M1','PV'), 3), ('IT6', '6', 1, ('M1','E'), 4), ('CT6', '6', 1, ('M1','E'), 4), ('SOM6', '6', 1, ('M1','SOM'), 4), ('PV6', '6', 1, ('M1','PV'), 4)]
 
-if cfg.singleCellPops:
-    for pop in netParams.popParams.values(): pop['numCells'] = 1
+## create populations with fixed 
+for popName, popLayer, scaleFactor, popKey1, popKey2 in shortPops:
+    netParams.popParams[popName] = {'cellModel': 'VecStim', 'rate': cfg.ratesShort[popName], 'noise': noise, 'start': start, 'pulses': [], 'ynormRange': layer[popLayer], 'density': scaleFactor*density[popKey1][popKey2]}
+
+netParams.popParams['PT5B_full'] =   {'cellModel': cfg.cellmod['PT5B'], 'cellType': 'PT', 'numCells':1}
 
 #------------------------------------------------------------------------------
 ## Long-range input populations (VecStims)
@@ -381,18 +210,17 @@ bins = connData['bins']
 if cfg.addConn and cfg.EEGain > 0.0:
     for ipre, preBin in enumerate(bins['AS']):
         for ipost, postBin in enumerate(bins[('W+AS', 'PT', 'L5B')]):
-            for cellModel in cellModels:
-                ruleLabel = 'EE_'+cellModel+'_'+str(ipre)+'_'+str(ipost)
-                netParams.connParams[ruleLabel] = { 
-                    'preConds': {'pop': ['IT2','IT4','IT5A','IT5B','PT5B','IT6'], 'ynorm': list(preBin)}, 
-                    'postConds': {'cellModel': cellModel, 'cellType': 'PT', 'ynorm': list(postBin)},
-                    'synMech': ['AMPA','NMDA'],
-                    'probability': pmat[('W+AS_norm', 'PT', 'L5B')][ipost,ipre],
-                    'weight': wmat[('W+AS_norm', 'PT', 'L5B')][ipost,ipre] * cfg.EEGain / cfg.synsperconn[cellModel], 
-                    'synMechWeightFactor': cfg.synWeightFractionEE,
-                    'delay': 'defaultDelay+dist_3D/propVelocity',
-                    'synsPerConn': cfg.synsperconn[cellModel],
-                    'sec': 'spiny'}
+            ruleLabel = 'EE_HH_full_'+str(ipre)+'_'+str(ipost)
+            netParams.connParams[ruleLabel] = { 
+                'preConds': {'pop': ['IT2','IT4','IT5A','IT5B','PT5B','IT6'], 'ynorm': list(preBin)}, 
+                'postConds': {'cellModel': 'HH_full', 'cellType': 'PT', 'ynorm': list(postBin)},
+                'synMech': ['AMPA','NMDA'],
+                'probability': pmat[('W+AS_norm', 'PT', 'L5B')][ipost,ipre],
+                'weight': wmat[('W+AS_norm', 'PT', 'L5B')][ipost,ipre] * cfg.EEGain / cfg.synsperconn['HH_full'], 
+                'synMechWeightFactor': cfg.synWeightFractionEE,
+                'delay': 'defaultDelay+dist_3D/propVelocity',
+                'synsPerConn': cfg.synsperconn['HH_full'],
+                'sec': 'spiny'}
             
 
 
@@ -424,36 +252,34 @@ if cfg.addConn and (cfg.IEGain > 0.0 or cfg.IIGain > 0.0):
     # disynapticBias = None  # default, used for I->I
 
     for i,(prePop, ynorm, IEweight, IEdisynBias) in enumerate(zip(prePopTypes, ynorms, IEweights, IEdisynBiases)):
-            for cellModel in cellModels:
-                disynapticBias = IEdisynBias
-                if prePop.startswith('PV'):             # PV->E
-                    weight = IEweight * cfg.IPTGain * cfg.PVEGain
-                    synMech = PVSynMech
-                    sec = 'perisom'
-                elif prePop.startswith('SOM'):                           # SOM->E
-                    weight = IEweight * cfg.IPTGain * cfg.SOMEGain
-                    synMech = SOMESynMech
-                    sec = 'spiny'
-                    synWeightFraction = cfg.synWeightFractionSOME
-                else:
-                  continue
-                
-                if cellModel == 'HH_full':
-                    weight = weight * cfg.IFullGain
+        disynapticBias = IEdisynBias
+        if prePop.startswith('PV'):             # PV->E
+            weight = IEweight * cfg.IPTGain * cfg.PVEGain
+            synMech = PVSynMech
+            sec = 'perisom'
+        elif prePop.startswith('SOM'):                           # SOM->E
+            weight = IEweight * cfg.IPTGain * cfg.SOMEGain
+            synMech = SOMESynMech
+            sec = 'spiny'
+            synWeightFraction = cfg.synWeightFractionSOME
+        else:
+          continue
+        
+        weight = weight * cfg.IFullGain
 
 
-                ruleLabel = 'I_'+cellModel+'_'+str(i)
-                netParams.connParams[ruleLabel] = {
-                    'preConds': {'pop': prePop, 'ynorm': ynorm},
-                    'postConds': {'cellModel': cellModel, 'cellType': 'PT', 'ynorm': ynorm},
-                    'synMech': synMech,
-                    'probability': '1.0 * exp(-dist_3D_border/probLambda)',
-                    'weight': weight / cfg.synsperconn[cellModel],
-                    'delay': 'defaultDelay+dist_3D_border/propVelocity',
-                    'synsPerConn': cfg.synsperconn[cellModel],
-                    'synMechWeightFactor': synWeightFraction,
-                    'sec': sec,
-                    'disynapticBias': disynapticBias}
+        ruleLabel = 'I_HH_full_'+str(i)
+        netParams.connParams[ruleLabel] = {
+            'preConds': {'pop': prePop, 'ynorm': ynorm},
+            'postConds': {'cellModel': 'HH_full', 'cellType': 'PT', 'ynorm': ynorm},
+            'synMech': synMech,
+            'probability': '1.0 * exp(-dist_3D_border/probLambda)',
+            'weight': weight / cfg.synsperconn['HH_full'],
+            'delay': 'defaultDelay+dist_3D_border/propVelocity',
+            'synsPerConn': cfg.synsperconn['HH_full'],
+            'synMechWeightFactor': synWeightFraction,
+            'sec': sec,
+            'disynapticBias': disynapticBias}
 
 
 #------------------------------------------------------------------------------
@@ -472,18 +298,17 @@ if cfg.addLongConn:
     for longPop in longPops:
             for EorI in ['exc', 'inh']:
                 for i, (binRange, convergence) in enumerate(zip(binsLong[(longPop, 'PT')], cmatLong[(longPop, 'PT', EorI)])):
-                    for cellModel in cellModels:
-                        ruleLabel = longPop+'_PT_'+EorI+'_'+cellModel+'_'+str(i)
-                        netParams.connParams[ruleLabel] = { 
-                            'preConds': {'pop': longPop}, 
-                            'postConds': {'cellModel': cellModel, 'cellType': 'PT', 'ynorm': list(binRange)},
-                            'synMech': syns[EorI],
-                            'convergence': convergence,
-                            'weight': cfg.weightLong / cfg.synsperconn[cellModel], 
-                            'synMechWeightFactor': cfg.synWeightFractionEE,
-                            'delay': 'defaultDelay+dist_3D/propVelocity',
-                            'synsPerConn': cfg.synsperconn[cellModel],
-                            'sec': 'spiny'}
+                    ruleLabel = longPop+'_PT_'+EorI+'_HH_full_'+str(i)
+                    netParams.connParams[ruleLabel] = { 
+                        'preConds': {'pop': longPop}, 
+                        'postConds': {'cellModel': 'HH_full', 'cellType': 'PT', 'ynorm': list(binRange)},
+                        'synMech': syns[EorI],
+                        'convergence': convergence,
+                        'weight': cfg.weightLong / cfg.synsperconn['HH_full'], 
+                        'synMechWeightFactor': cfg.synWeightFractionEE,
+                        'delay': 'defaultDelay+dist_3D/propVelocity',
+                        'synsPerConn': cfg.synsperconn['HH_full'],
+                        'sec': 'spiny'}
 
 
 #------------------------------------------------------------------------------

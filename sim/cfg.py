@@ -207,6 +207,17 @@ cfg.weightLong = 0.5  # corresponds to unitary connection somatic EPSP (mV)
 cfg.startLong = 0  # start at 0 ms
 cfg.ratesLong = {'TPO': [0,5], 'TVL': [0,2.5], 'S1': [0,5], 'S2': [0,5], 'cM1': [0,2.5], 'M2': [0,2.5], 'OC': [0,5]}
 
+#------------------------------------------------------------------------------
+# Short range inputs i.e. intracortical
+#------------------------------------------------------------------------------
+cfg.noiseShort = 1.0  # firing rate random noise
+cfg.delayShort = 5.0  # (ms)
+cfg.weightShort = 0.5  # corresponds to unitary connection somatic EPSP (mV)
+cfg.startShort = 0  # start at 0 ms
+cfg.ratesShort = {'IT2': [0,5], 'IT4': [0,2.5], 'IT5A': [0,5], 'IT5B': [0,5], 'IT6': [0,2.5], 'CT6': [0,2.5], 'PT5B': [0,2.5],
+                  'SOM2': [0,2.5], 'SOM5A': [0,5], 'SOM5B': [0,5], 'SOM6': [0,5],
+                  'PV2': [0,2.5], 'PV5A': [0,5], 'PV5B': [0,5], 'PV6': [0,5]}
+
 
 ## input pulses
 cfg.addPulses = 1
