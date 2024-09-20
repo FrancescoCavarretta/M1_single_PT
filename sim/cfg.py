@@ -122,8 +122,6 @@ cfg.strengthFactor = 1.0
 
 cfg.EEGain = 0.5
 
-cfg.IEdisynapticBias = None  # increase prob of I->Ey conns if Ex->I and Ex->Ey exist 
-
 #------------------------------------------------------------------------------
 ## I->E gains
 cfg.PVEGain = 1.0
