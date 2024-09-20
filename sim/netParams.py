@@ -379,61 +379,22 @@ bins = connData['bins']
 #------------------------------------------------------------------------------
 ## E -> E
 if cfg.addConn and cfg.EEGain > 0.0:
-    labelsConns = [('W+AS_norm', 'IT', 'L2/3,4'), ('W+AS_norm', 'IT', 'L5A,5B'), 
-                   ('W+AS_norm', 'PT', 'L5B'), ('W+AS_norm', 'IT', 'L6'), ('W+AS_norm', 'CT', 'L6')]
-    labelPostBins = [('W+AS', 'IT', 'L2/3,4'), ('W+AS', 'IT', 'L5A,5B'), ('W+AS', 'PT', 'L5B'), 
-                    ('W+AS', 'IT', 'L6'), ('W+AS', 'CT', 'L6')]
-    labelPreBins = ['W', 'AS', 'AS', 'W', 'W']
-    preTypes = [['IT'], ['IT'], ['IT', 'PT'], ['IT','CT'], ['IT','CT']] 
-    postTypes = ['IT', 'IT', 'PT', 'IT','CT']
-    ESynMech = ['AMPA','NMDA']
-
-    for i,(label, preBinLabel, postBinLabel) in enumerate(zip(labelsConns,labelPreBins, labelPostBins)):
-        for ipre, preBin in enumerate(bins[preBinLabel]):
-            for ipost, postBin in enumerate(bins[postBinLabel]):
-                for cellModel in cellModels:
-                    ruleLabel = 'EE_'+cellModel+'_'+str(i)+'_'+str(ipre)+'_'+str(ipost)
-                    netParams.connParams[ruleLabel] = { 
-                        'preConds': {'cellType': preTypes[i], 'ynorm': list(preBin)}, 
-                        'postConds': {'cellModel': cellModel, 'cellType': postTypes[i], 'ynorm': list(postBin)},
-                        'synMech': ESynMech,
-                        'probability': pmat[label][ipost,ipre],
-                        'weight': wmat[label][ipost,ipre] * cfg.EEGain / cfg.synsperconn[cellModel], 
-                        'synMechWeightFactor': cfg.synWeightFractionEE,
-                        'delay': 'defaultDelay+dist_3D/propVelocity',
-                        'synsPerConn': cfg.synsperconn[cellModel],
-                        'sec': 'spiny'}
+    for ipre, preBin in enumerate(bins['AS']):
+        for ipost, postBin in enumerate(bins[('W+AS', 'PT', 'L5B')]):
+            for cellModel in cellModels:
+                ruleLabel = 'EE_'+cellModel+'_'+str(ipre)+'_'+str(ipost)
+                netParams.connParams[ruleLabel] = { 
+                    'preConds': {'cellType': ['IT', 'PT'], 'ynorm': list(preBin)}, 
+                    'postConds': {'cellModel': cellModel, 'cellType': 'PT', 'ynorm': list(postBin)},
+                    'synMech': ['AMPA','NMDA'],
+                    'probability': pmat[('W+AS_norm', 'PT', 'L5B')][ipost,ipre],
+                    'weight': wmat[('W+AS_norm', 'PT', 'L5B')][ipost,ipre] * cfg.EEGain / cfg.synsperconn[cellModel], 
+                    'synMechWeightFactor': cfg.synWeightFractionEE,
+                    'delay': 'defaultDelay+dist_3D/propVelocity',
+                    'synsPerConn': cfg.synsperconn[cellModel],
+                    'sec': 'spiny'}
             
 
-#------------------------------------------------------------------------------
-## E -> I
-if cfg.EIGain: # Use IEGain if value set
-    cfg.EPVGain = cfg.EIGain
-    cfg.ESOMGain = cfg.EIGain
-else: 
-    cfg.EIGain = (cfg.EPVGain+cfg.ESOMGain)/2.0
-
-if cfg.addConn and (cfg.EPVGain > 0.0 or cfg.ESOMGain > 0.0):
-    labelsConns = ['FS', 'LTS']
-    labelPostBins = ['FS/LTS', 'FS/LTS']
-    labelPreBins = ['FS/LTS', 'FS/LTS']
-    preTypes = ['IT', 'PT', 'CT']
-    postTypes = ['PV', 'SOM']
-    ESynMech = ['AMPA','NMDA']
-    lGain = [cfg.EPVGain, cfg.ESOMGain] # E -> PV or E -> SOM
-    for i,(label, preBinLabel, postBinLabel) in enumerate(zip(labelsConns,labelPreBins, labelPostBins)):
-        for ipre, preBin in enumerate(bins[preBinLabel]):
-            for ipost, postBin in enumerate(bins[postBinLabel]):
-                ruleLabel = 'EI_'+str(i)+'_'+str(ipre)+'_'+str(ipost)
-                netParams.connParams[ruleLabel] = {
-                    'preConds': {'cellType': preTypes, 'ynorm': list(preBin)},
-                    'postConds': {'cellType': postTypes[i], 'ynorm': list(postBin)},
-                    'synMech': ESynMech,
-                    'probability': pmat[label][ipost,ipre],
-                    'weight': wmat[label][ipost,ipre] * lGain[i],
-                    'synMechWeightFactor': cfg.synWeightFractionEI,
-                    'delay': 'defaultDelay+dist_3D/propVelocity',
-                    'sec': 'soma'} # simple I cells used right now only have soma
 
 
 
@@ -445,21 +406,12 @@ if cfg.IEGain: # Use IEGain if value set
 else: 
     cfg.IEGain = (cfg.PVEGain+cfg.SOMEGain)/2.0
 
-if cfg.IIGain:  # Use IIGain if value set
-    cfg.SOMPVGain = cfg.IIGain
-    cfg.PVSOMGain = cfg.IIGain
-    cfg.SOMSOMGain = cfg.IIGain
-    cfg.PVPVGain = cfg.IIGain
-else:
-    cfg.IIGain = (cfg.PVSOMGain+cfg.SOMPVGain+cfg.SOMSOMGain+cfg.PVPVGain)/4.0
 
 if cfg.addConn and (cfg.IEGain > 0.0 or cfg.IIGain > 0.0):
     # Local, intralaminar only; all-to-all but distance-based; high weights; L5A/B->L5A/B
     preCellTypes = ['SOM', 'SOM', 'SOM', 'PV', 'PV', 'PV']
     ynorms = [(layer['2'][0],layer['4'][1]), (layer['5A'][0],layer['5B'][1]), (layer['6'][0],layer['6'][1])]*2
     IEweights = cfg.IEweights * 2  # [I->E2/3+4, I->E5, I->E6] weights (Note * 2 is repeat list operator)
-    IIweights = cfg.IIweights * 2  # [I->I2/3+4, I->I5, I->I6] weights (Note * 2 is repeat list operator)
-    postCellTypes = ['PT', ['IT','CT'], 'PV', 'SOM']
     IEdisynBiases = [None, cfg.IEdisynapticBias, cfg.IEdisynapticBias, None, cfg.IEdisynapticBias, cfg.IEdisynapticBias]
     disynapticBias = None  # default, used for I->I
 
@@ -471,57 +423,26 @@ if cfg.addConn and (cfg.IEGain > 0.0 or cfg.IIGain > 0.0):
     # IEdisynBiases = [cfg.IEdisynapticBias, cfg.IEdisynapticBias]
     # disynapticBias = None  # default, used for I->I
 
-    for i,(preCellType, ynorm, IEweight, IIweight, IEdisynBias) in enumerate(zip(preCellTypes, ynorms, IEweights, IIweights, IEdisynBiases)):
-        for ipost, postCellType in enumerate(postCellTypes):
+    for i,(preCellType, ynorm, IEweight, IEdisynBias) in enumerate(zip(preCellTypes, ynorms, IEweights, IEdisynBiases)):
             for cellModel in cellModels:
-                if postCellType == 'PV':    # postsynaptic I cell
-                    sec = 'soma'
-                    synWeightFraction = [1]
-                    if preCellType == 'PV':             # PV->PV
-                        weight = IIweight * cfg.PVPVGain
-                        synMech = PVSynMech
-                    else:                           # SOM->PV
-                        weight = IIweight * cfg.SOMPVGain
-                        synMech = SOMISynMech
-                elif postCellType == 'SOM': # postsynaptic I cell
-                    sec = 'soma'
-                    synWeightFraction = [1]
-                    if preCellType == 'PV':             # PV->SOM
-                        weight = IIweight * cfg.PVSOMGain
-                        synMech = PVSynMech
-                    else:                           # SOM->SOM
-                        weight = IIweight * cfg.SOMSOMGain
-                        synMech = SOMISynMech
-                elif postCellType == ['IT','CT']: # postsynaptic IT,CT cell
-                    disynapticBias = IEdisynBias
-                    if preCellType == 'PV':             # PV->E
-                        weight = IEweight * cfg.PVEGain
-                        synMech = PVSynMech
-                        sec = 'perisom'
-                    else:                           # SOM->E
-                        weight = IEweight * cfg.SOMEGain
-                        synMech = SOMESynMech
-                        sec = 'spiny'
-                        synWeightFraction = cfg.synWeightFractionSOME
-                elif postCellType == 'PT': # postsynaptic PT cell
-                    disynapticBias = IEdisynBias
-                    if preCellType == 'PV':             # PV->E
-                        weight = IEweight * cfg.IPTGain * cfg.PVEGain
-                        synMech = PVSynMech
-                        sec = 'perisom'
-                    else:                           # SOM->E
-                        weight = IEweight * cfg.IPTGain * cfg.SOMEGain
-                        synMech = SOMESynMech
-                        sec = 'spiny'
-                        synWeightFraction = cfg.synWeightFractionSOME
+                disynapticBias = IEdisynBias
+                if preCellType == 'PV':             # PV->E
+                    weight = IEweight * cfg.IPTGain * cfg.PVEGain
+                    synMech = PVSynMech
+                    sec = 'perisom'
+                else:                           # SOM->E
+                    weight = IEweight * cfg.IPTGain * cfg.SOMEGain
+                    synMech = SOMESynMech
+                    sec = 'spiny'
+                    synWeightFraction = cfg.synWeightFractionSOME
                 if cellModel == 'HH_full':
                     weight = weight * cfg.IFullGain
 
 
-                ruleLabel = 'I_'+cellModel+'_'+str(i)+'_'+str(ipost)
+                ruleLabel = 'I_'+cellModel+'_'+str(i)
                 netParams.connParams[ruleLabel] = {
                     'preConds': {'cellType': preCellType, 'ynorm': ynorm},
-                    'postConds': {'cellModel': cellModel, 'cellType': postCellType, 'ynorm': ynorm},
+                    'postConds': {'cellModel': cellModel, 'cellType': 'PT', 'ynorm': ynorm},
                     'synMech': synMech,
                     'probability': '1.0 * exp(-dist_3D_border/probLambda)',
                     'weight': weight / cfg.synsperconn[cellModel],
@@ -540,22 +461,19 @@ if cfg.addLongConn:
     # load load experimentally based parameters for long range inputs
     cmatLong = connLongData['cmat']
     binsLong = connLongData['bins']
-
     longPops = ['TPO', 'TVL', 'S1', 'S2', 'cM1', 'M2', 'OC']
-    cellTypes = ['IT', 'PT', 'CT', 'PV', 'SOM']
     EorI = ['exc', 'inh']
     syns = {'exc': ESynMech, 'inh': 'GABAA'}
     synFracs = {'exc': cfg.synWeightFractionEE, 'inh': [1.0]}
 
     for longPop in longPops:
-        for ct in cellTypes:
             for EorI in ['exc', 'inh']:
-                for i, (binRange, convergence) in enumerate(zip(binsLong[(longPop, ct)], cmatLong[(longPop, ct, EorI)])):
+                for i, (binRange, convergence) in enumerate(zip(binsLong[(longPop, 'PT')], cmatLong[(longPop, 'PT', EorI)])):
                     for cellModel in cellModels:
-                        ruleLabel = longPop+'_'+ct+'_'+EorI+'_'+cellModel+'_'+str(i)
+                        ruleLabel = longPop+'_PT_'+EorI+'_'+cellModel+'_'+str(i)
                         netParams.connParams[ruleLabel] = { 
                             'preConds': {'pop': longPop}, 
-                            'postConds': {'cellModel': cellModel, 'cellType': ct, 'ynorm': list(binRange)},
+                            'postConds': {'cellModel': cellModel, 'cellType': 'PT', 'ynorm': list(binRange)},
                             'synMech': syns[EorI],
                             'convergence': convergence,
                             'weight': cfg.weightLong / cfg.synsperconn[cellModel], 
@@ -580,13 +498,15 @@ if cfg.addSubConn:
     synDens, _, fixedSomaY = connDendPTData['synDens'], connDendPTData['gridY'], connDendPTData['fixedSomaY']
     for k in synDens.keys():
         prePop,postType = k.split('_')  # eg. split 'M2_PT'
-        if prePop == 'L2': prePop = 'IT2'  # include conns from layer 2/3 and 4
-        netParams.subConnParams[k] = {
-        'preConds': {'pop': prePop}, 
-        'postConds': {'cellType': postType},  
-        'sec': 'spiny',
-        'groupSynMechs': ESynMech, 
-        'density': {'type': '1Dmap', 'gridX': None, 'gridY': gridY, 'gridValues': synDens[k], 'fixedSomaY': fixedSomaY}} 
+
+        if postType == 'PT':
+            if prePop == 'L2': prePop = 'IT2'  # include conns from layer 2/3 and 4
+            netParams.subConnParams[k] = {
+            'preConds': {'pop': prePop}, 
+            'postConds': {'cellType': postType},  
+            'sec': 'spiny',
+            'groupSynMechs': ESynMech, 
+            'density': {'type': '1Dmap', 'gridX': None, 'gridY': gridY, 'gridValues': synDens[k], 'fixedSomaY': fixedSomaY}} 
 
 
     #------------------------------------------------------------------------------
@@ -597,39 +517,23 @@ if cfg.addSubConn:
     synDens, _, fixedSomaY = connDendITData['synDens'], connDendITData['gridY'], connDendITData['fixedSomaY']
     for k in synDens.keys():
         prePop,post = k.split('_')  # eg. split 'M2_L2'
-        postCellTypes = ['IT','PT','CT'] if prePop in ['OC','TPO'] else ['IT','CT']  # only OC,TPO include PT cells
-        postyRange = list(layer[post.split('L')[1]]) # get layer yfrac range 
-        if post == 'L2': postyRange[1] = layer['4'][1]  # apply L2 rule also to L4 
-        netParams.subConnParams[k] = {
-        'preConds': {'pop': prePop}, 
-        'postConds': {'ynorm': postyRange , 'cellType': postCellTypes},  
-        'sec': 'spiny',
-        'groupSynMechs': ESynMech, 
-        'density': {'type': '1Dmap', 'gridX': None, 'gridY': gridY, 'gridValues': synDens[k], 'fixedSomaY': fixedSomaY}} 
+
+        if prePop in ['OC','TPO']:
+            postyRange = list(layer[post.split('L')[1]]) # get layer yfrac range 
+            if post == 'L2': postyRange[1] = layer['4'][1]  # apply L2 rule also to L4 
+            netParams.subConnParams[k] = {
+            'preConds': {'pop': prePop}, 
+            'postConds': {'ynorm': postyRange , 'cellType': 'PT'},  
+            'sec': 'spiny',
+            'groupSynMechs': ESynMech, 
+            'density': {'type': '1Dmap', 'gridX': None, 'gridY': gridY, 'gridValues': synDens[k], 'fixedSomaY': fixedSomaY}} 
 
 
     #------------------------------------------------------------------------------
-    # S1, S2, cM1 -> E IT/CT; no data, assume uniform over spiny
-    netParams.subConnParams['S1,S2,cM1->IT,CT'] = {
-        'preConds': {'pop': ['S1','S2','cM1']}, 
-        'postConds': {'cellType': ['IT','CT']},
-        'sec': 'spiny',
-        'groupSynMechs': ESynMech, 
-        'density': 'uniform'} 
-
-
-    #------------------------------------------------------------------------------
-    # rest of local E->E (exclude IT2->PT); uniform distribution over spiny
-    netParams.subConnParams['IT2->non-PT'] = {
-        'preConds': {'pop': ['IT2']}, 
-        'postConds': {'cellType': ['IT','CT']},
-        'sec': 'spiny',
-        'groupSynMechs': ESynMech, 
-        'density': 'uniform'} 
-        
+    # rest of local E->E (exclude IT2->PT); uniform distribution over spiny      
     netParams.subConnParams['non-IT2->E'] = {
         'preConds': {'pop': ['IT4','IT5A','IT5B','PT5B','IT6','CT6']}, 
-        'postConds': {'cellType': ['IT','PT','CT']},
+        'postConds': {'cellType': 'PT'},
         'sec': 'spiny',
         'groupSynMechs': ESynMech, 
         'density': 'uniform'} 
@@ -639,7 +543,7 @@ if cfg.addSubConn:
     # PV->E; perisomatic (no sCRACM)
     netParams.subConnParams['PV->E'] = {
         'preConds': {'cellType': 'PV'}, 
-        'postConds': {'cellType': ['IT', 'CT', 'PT']},  
+        'postConds': {'cellType': 'PT'},  
         'sec': 'perisom', 
         'density': 'uniform'} 
 
@@ -648,20 +552,11 @@ if cfg.addSubConn:
     # SOM->E; apical dendrites (no sCRACM)
     netParams.subConnParams['SOM->E'] = {
         'preConds': {'cellType': 'SOM'}, 
-        'postConds': {'cellType': ['IT', 'CT', 'PT']},  
+        'postConds': {'cellType': 'PT'},  
         'sec': 'apicdend',
         'groupSynMechs': SOMESynMech,
         'density': 'uniform'} 
 
-
-    #------------------------------------------------------------------------------
-    # All->I; apical dendrites (no sCRACM)
-    netParams.subConnParams['All->I'] = {
-        'preConds': {'cellType': ['IT', 'CT', 'PT', 'SOM', 'PV']+longPops}, 
-        'postConds': {'cellType': ['SOM', 'PV']},  
-        'sec': 'spiny',
-        'groupSynMechs': ESynMech,
-        'density': 'uniform'} 
 
 
 #------------------------------------------------------------------------------
@@ -730,3 +625,7 @@ netParams.description = """
 - v56: Reduced dt from 0.05 to 0.025 (note this version follows from v54, i.e. without new cell types; branch 'paper2019_py3')
 - v56: (included in prev version): Added cfg.KgbarFactor
 """
+
+if __name__ == '__main__':
+    print(len(netParams.connParams))
+    print(len(netParams.subConnParams))
