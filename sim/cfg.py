@@ -47,7 +47,7 @@ cfg.intervalFolder = 'interval_saving'
 #------------------------------------------------------------------------------
 # Recording 
 #------------------------------------------------------------------------------
-allpops = ['IT2','PV2','SOM2','IT4','IT5A','PV5A','SOM5A','IT5B','PT5B','PV5B','SOM5B','IT6','CT6','PV6','SOM6']
+allpops = ['PT5B_full']
 
 cfg.recordTraces = {'V_soma': {'sec':'soma', 'loc':0.5, 'var':'v'}}#,
 					#'V_soma_ih': {'sec':'soma', 'loc':0.5, 'var':'gbar', 'mech':'hd', 'conds':{'pop': 'PT5B'}}}
@@ -94,61 +94,22 @@ cfg.analysis['plotLFP'] = {'plots': ['timeSeries'], 'electrodes': list(range(len
 cfg.analysis['plotTraces'] = {'include': [], 'timeRange': [0, cfg.duration], 'oneFigPer': 'trace', 'figSize': (10,4), 'saveFig': True, 'showFig': False} 
 
 
-#------------------------------------------------------------------------------
-# Cells
-#------------------------------------------------------------------------------
-cfg.cellmod =  {'IT2': 'HH_reduced',
-				'IT4': 'HH_reduced',
-				'IT5A': 'HH_full',
-				'IT5B': 'HH_reduced',
-				'PT5B': 'HH_full',
-				'IT6': 'HH_reduced',
-				'CT6': 'HH_reduced'}
-
-cfg.ihModel = 'migliore'  # ih model
-cfg.ihGbar = 1.0  # multiplicative factor for ih gbar in PT cells
-cfg.ihGbarZD = None # multiplicative factor for ih gbar in PT cells
-cfg.ihGbarBasal = 1.0 # 0.1 # multiplicative factor for ih gbar in PT cells
-cfg.ihlkc = 0.2 # ih leak param (used in Migliore)
-cfg.ihlkcBasal = 1.0
-cfg.ihlkcBelowSoma = 0.01
-cfg.ihlke = -86  # ih leak param (used in Migliore)
-cfg.ihSlope = 14*2
-
-cfg.removeNa = False  # simulate TTX; set gnabar=0s
-cfg.somaNa = 5
-cfg.dendNa = 0.3
-cfg.axonNa = 7
-cfg.axonRa = 0.005
-
-cfg.gpas = 0.5  # multiplicative factor for pas g in PT cells
-cfg.epas = 0.9  # multiplicative factor for pas e in PT cells
-
-cfg.KgbarFactor = 1.0 # multiplicative factor for K channels gbar in all E cells
-cfg.makeKgbarFactorEqualToNewFactor = False
-
-cfg.modifyMechs = {'startTime': 500, 'endTime': 1000, 'cellType':'PT', 'mech': 'hd', 'property': 'gbar', 'newFactor': 1.00, 'origFactor': 0.75}
-
-
 
 #------------------------------------------------------------------------------
 # Synapses
 #------------------------------------------------------------------------------
 cfg.synWeightFractionEE = [0.5, 0.5] # E->E AMPA to NMDA ratio
-cfg.synWeightFractionEI = [0.5, 0.5] # E->I AMPA to NMDA ratio
 cfg.synWeightFractionSOME = [0.9, 0.1] # SOM -> E GABAASlow to GABAB ratio
 
-cfg.synsperconn = {'HH_full': 5, 'HH_reduced': 1, 'HH_simple': 1}
+cfg.synsperconn = 5
 cfg.AMPATau2Factor = 1.0
 
 #------------------------------------------------------------------------------
 # Network 
 #------------------------------------------------------------------------------
-cfg.singleCellPops = 0  # Create pops with 1 single cell (to debug)
 cfg.weightNorm = 1  # use weight normalization
 cfg.weightNormThreshold = 4.0  # weight normalization factor threshold
 
-cfg.addConn = 1
 cfg.scale = 0.3
 cfg.sizeY = 1350.0
 cfg.sizeX = 300.0
@@ -160,46 +121,25 @@ cfg.ITinterFactor = 1.0
 cfg.strengthFactor = 1.0
 
 cfg.EEGain = 0.5
-cfg.EIGain = 1.0
-cfg.IEGain = 1.0
-cfg.IIGain = 1.0
 
 cfg.IEdisynapticBias = None  # increase prob of I->Ey conns if Ex->I and Ex->Ey exist 
-
-#------------------------------------------------------------------------------
-## E->I gains
-cfg.EPVGain = 1.0
-cfg.ESOMGain = 1.0
 
 #------------------------------------------------------------------------------
 ## I->E gains
 cfg.PVEGain = 1.0
 cfg.SOMEGain = 1.0
-
-#------------------------------------------------------------------------------
-## I->I gains
-cfg.PVSOMGain = None #0.25
-cfg.SOMPVGain = None #0.25
-cfg.PVPVGain = None # 0.75
-cfg.SOMSOMGain = None #0.75
+cfg.IEGain = (cfg.PVEGain+cfg.SOMEGain)/2.0
 
 #------------------------------------------------------------------------------
 ## I->E/I layer weights (L2/3+4, L5, L6)
 cfg.IEweights = [0.8, 0.8, 1.0]
-cfg.IIweights = [1.2, 1.0, 1.0]
 
 cfg.IPTGain = 1.0
 cfg.IFullGain = 1.0
 
 #------------------------------------------------------------------------------
-# Subcellular distribution
-#------------------------------------------------------------------------------
-cfg.addSubConn = 1
-
-#------------------------------------------------------------------------------
 # Long range inputs
 #------------------------------------------------------------------------------
-cfg.addLongConn = 1 
 cfg.numCellsLong = 1000 # num of cells per population
 cfg.noiseLong = 1.0  # firing rate random noise
 cfg.delayLong = 5.0  # (ms)

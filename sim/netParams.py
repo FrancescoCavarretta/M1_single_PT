@@ -37,9 +37,6 @@ netParams.shape = 'cylinder' # cylindrical (column-like) volume
 #------------------------------------------------------------------------------
 # General connectivity parameters
 #------------------------------------------------------------------------------
-netParams.scaleConnWeight = 1.0 # Connection weight scale factor (default if no model specified)
-netParams.scaleConnWeightModels = {'HH_simple': 1.0, 'HH_reduced': 1.0, 'HH_full': 1.0} #scale conn weight factor for each cell model
-netParams.scaleConnWeightNetStims = 1.0 #0.5  # scale conn weight factor for NetStims
 netParams.defaultThreshold = 0.0 # spike threshold, 10 mV is NetCon default, lower it for all cells
 netParams.defaultDelay = 2.0 # default conn delay (ms)
 netParams.propVelocity = 500.0 # propagation velocity (um/ms)
@@ -54,10 +51,6 @@ layer = {'1':[0.0, 0.1], '2': [0.1,0.29], '4': [0.29,0.37], '5A': [0.37,0.47], '
 
 netParams.correctBorder = {'threshold': [cfg.correctBorderThreshold, cfg.correctBorderThreshold, cfg.correctBorderThreshold], 
                         'yborders': [layer['2'][0], layer['5A'][0], layer['6'][0], layer['6'][1]]}  # correct conn border effect
-
-#------------------------------------------------------------------------------
-## Load cell rules previously saved using netpyne format
-saveCellParams = False #True
 
 netParams.loadCellParamsRule(label='PT5B_full', fileName='cells/PT5B_full_cellParams.pkl')
 
@@ -83,29 +76,28 @@ shortPops = [('IT2', '2', 1, ('M1','E'), 0), ('SOM2', '24', 1, ('M1','SOM'), 5),
 for popName, popLayer, scaleFactor, popKey1, popKey2 in shortPops:
     netParams.popParams[popName] = {'cellModel': 'VecStim', 'rate': cfg.ratesShort[popName], 'noise': noise, 'start': start, 'pulses': [], 'ynormRange': layer[popLayer], 'density': scaleFactor*density[popKey1][popKey2]}
 
-netParams.popParams['PT5B_full'] =   {'cellModel': cfg.cellmod['PT5B'], 'cellType': 'PT', 'numCells':1}
+netParams.popParams['PT5B_full'] =   {'cellModel': 'HH_full', 'cellType': 'PT', 'numCells':1}
 
 #------------------------------------------------------------------------------
 ## Long-range input populations (VecStims)
-if cfg.addLongConn:
-    ## load experimentally based parameters for long range inputs
-    with open('conn/conn_long.pkl', 'rb') as fileObj: connLongData = pickle.load(fileObj)
-    #ratesLong = connLongData['rates']
+## load experimentally based parameters for long range inputs
+with open('conn/conn_long.pkl', 'rb') as fileObj: connLongData = pickle.load(fileObj)
+#ratesLong = connLongData['rates']
 
-    numCells = cfg.numCellsLong
-    noise = cfg.noiseLong
-    start = cfg.startLong
+numCells = cfg.numCellsLong
+noise = cfg.noiseLong
+start = cfg.startLong
 
-    longPops = ['TPO', 'TVL', 'S1', 'S2', 'cM1', 'M2', 'OC']
-    ## create populations with fixed 
-    for longPop in longPops:
-        netParams.popParams[longPop] = {'cellModel': 'VecStim', 'numCells': numCells, 'rate': cfg.ratesLong[longPop], 
-                                        'noise': noise, 'start': start, 'pulses': [], 'ynormRange': layer['long'+longPop]}
-        if isinstance(cfg.ratesLong[longPop], str): # filename to load spikes from
-            spikesFile = cfg.ratesLong[longPop]
-            with open(spikesFile, 'r') as f: spks = json.load(f)
-            netParams.popParams[longPop].pop('rate')
-            netParams.popParams[longPop]['spkTimes'] = spks
+longPops = ['TPO', 'TVL', 'S1', 'S2', 'cM1', 'M2', 'OC']
+## create populations with fixed 
+for longPop in longPops:
+    netParams.popParams[longPop] = {'cellModel': 'VecStim', 'numCells': numCells, 'rate': cfg.ratesLong[longPop], 
+                                    'noise': noise, 'start': start, 'pulses': [], 'ynormRange': layer['long'+longPop]}
+    if isinstance(cfg.ratesLong[longPop], str): # filename to load spikes from
+        spikesFile = cfg.ratesLong[longPop]
+        with open(spikesFile, 'r') as f: spks = json.load(f)
+        netParams.popParams[longPop].pop('rate')
+        netParams.popParams[longPop]['spkTimes'] = spks
 
 
 #------------------------------------------------------------------------------
@@ -117,11 +109,6 @@ netParams.synMechParams['GABAB'] = {'mod':'MyExp2SynBB', 'tau1': 3.5, 'tau2': 26
 netParams.synMechParams['GABAA'] = {'mod':'MyExp2SynBB', 'tau1': 0.07, 'tau2': 18.2, 'e': -80}
 netParams.synMechParams['GABAASlow'] = {'mod': 'MyExp2SynBB','tau1': 2, 'tau2': 100, 'e': -80}
 netParams.synMechParams['GABAASlowSlow'] = {'mod': 'MyExp2SynBB', 'tau1': 200, 'tau2': 400, 'e': -80}
-
-ESynMech = ['AMPA', 'NMDA']
-SOMESynMech = ['GABAASlow','GABAB']
-SOMISynMech = ['GABAASlow']
-PVSynMech = ['GABAA']
 
 
 #------------------------------------------------------------------------------
@@ -207,183 +194,164 @@ bins = connData['bins']
 
 #------------------------------------------------------------------------------
 ## E -> E
-if cfg.addConn and cfg.EEGain > 0.0:
-    for ipre, preBin in enumerate(bins['AS']):
-        for ipost, postBin in enumerate(bins[('W+AS', 'PT', 'L5B')]):
-            ruleLabel = 'EE_HH_full_'+str(ipre)+'_'+str(ipost)
-            netParams.connParams[ruleLabel] = { 
-                'preConds': {'pop': ['IT2','IT4','IT5A','IT5B','PT5B','IT6'], 'ynorm': list(preBin)}, 
-                'postConds': {'cellModel': 'HH_full', 'cellType': 'PT', 'ynorm': list(postBin)},
-                'synMech': ['AMPA','NMDA'],
-                'probability': pmat[('W+AS_norm', 'PT', 'L5B')][ipost,ipre],
-                'weight': wmat[('W+AS_norm', 'PT', 'L5B')][ipost,ipre] * cfg.EEGain / cfg.synsperconn['HH_full'], 
-                'synMechWeightFactor': cfg.synWeightFractionEE,
-                'delay': 'defaultDelay+dist_3D/propVelocity',
-                'synsPerConn': cfg.synsperconn['HH_full'],
-                'sec': 'spiny'}
+for ipre, preBin in enumerate(bins['AS']):
+    for ipost, postBin in enumerate(bins[('W+AS', 'PT', 'L5B')]):
+        ruleLabel = 'EE_HH_full_'+str(ipre)+'_'+str(ipost)
+        netParams.connParams[ruleLabel] = { 
+            'preConds': {'pop': ['IT2','IT4','IT5A','IT5B','PT5B','IT6'], 'ynorm': list(preBin)}, 
+            'postConds': {'cellModel': 'HH_full', 'cellType': 'PT', 'ynorm': list(postBin)},
+            'synMech': ['AMPA','NMDA'],
+            'probability': pmat[('W+AS_norm', 'PT', 'L5B')][ipost,ipre],
+            'weight': wmat[('W+AS_norm', 'PT', 'L5B')][ipost,ipre] * cfg.EEGain / cfg.synsperconn, 
+            'synMechWeightFactor': cfg.synWeightFractionEE,
+            'delay': 'defaultDelay+dist_3D/propVelocity',
+            'synsPerConn': cfg.synsperconn,
+            'sec': 'spiny'}
             
 
 
 
 
 #------------------------------------------------------------------------------
-## I -> all
-if cfg.IEGain: # Use IEGain if value set
-    cfg.PVEGain = cfg.IEGain
-    cfg.SOMEGain = cfg.IEGain
-else: 
-    cfg.IEGain = (cfg.PVEGain+cfg.SOMEGain)/2.0
+# Local, intralaminar only; all-to-all but distance-based; high weights; L5A/B->L5A/B
+prePopTypes = ['SOM2','SOM5A', 'SOM5B', 'SOM6', 'PV2','PV5A', 'PV5B', 'PV6']
+ynorms = [(layer['2'][0],layer['4'][1]), (layer['5A'][0],layer['5B'][1]), (layer['5A'][0],layer['5B'][1]), (layer['6'][0],layer['6'][1])]*2
+IEweights = (cfg.IEweights[:1] + (cfg.IEweights[1:2] * 2) + cfg.IEweights[2:]) * 2  # [I->E2/3+4, I->E5, I->E6] weights (Note * 2 is repeat list operator)
+IEdisynBiases = [None, cfg.IEdisynapticBias, cfg.IEdisynapticBias, cfg.IEdisynapticBias, None, cfg.IEdisynapticBias, cfg.IEdisynapticBias, cfg.IEdisynapticBias]
+disynapticBias = None  # default, used for I->I
+
+# preCellTypes = ['SOM', 'PV']
+# ynorms = [[0,1]]*2
+# IEweights = cfg.IEweights * 2  # [I->E2/3+4, I->E5, I->E6] weights (Note * 2 is repeat list operator)
+# IIweights = cfg.IIweights * 2  # [I->I2/3+4, I->I5, I->I6] weights (Note * 2 is repeat list operator)
+# postCellTypes = ['PT', ['IT','CT'], 'PV', 'SOM']
+# IEdisynBiases = [cfg.IEdisynapticBias, cfg.IEdisynapticBias]
+# disynapticBias = None  # default, used for I->I
+
+for i,(prePop, ynorm, IEweight, IEdisynBias) in enumerate(zip(prePopTypes, ynorms, IEweights, IEdisynBiases)):
+    disynapticBias = IEdisynBias
+    if prePop.startswith('PV'):             # PV->E
+        weight = IEweight * cfg.IPTGain * cfg.PVEGain
+        synMech = ['GABAA']
+        sec = 'perisom'
+    elif prePop.startswith('SOM'):                           # SOM->E
+        weight = IEweight * cfg.IPTGain * cfg.SOMEGain
+        synMech = ['GABAASlow','GABAB']
+        sec = 'spiny'
+        synWeightFraction = cfg.synWeightFractionSOME
+    else:
+      continue
+    
+    weight = weight * cfg.IFullGain
 
 
-if cfg.addConn and (cfg.IEGain > 0.0 or cfg.IIGain > 0.0):
-    # Local, intralaminar only; all-to-all but distance-based; high weights; L5A/B->L5A/B
-    prePopTypes = ['SOM2','SOM5A', 'SOM5B', 'SOM6', 'PV2','PV5A', 'PV5B', 'PV6']
-    ynorms = [(layer['2'][0],layer['4'][1]), (layer['5A'][0],layer['5B'][1]), (layer['5A'][0],layer['5B'][1]), (layer['6'][0],layer['6'][1])]*2
-    IEweights = (cfg.IEweights[:1] + (cfg.IEweights[1:2] * 2) + cfg.IEweights[2:]) * 2  # [I->E2/3+4, I->E5, I->E6] weights (Note * 2 is repeat list operator)
-    IEdisynBiases = [None, cfg.IEdisynapticBias, cfg.IEdisynapticBias, cfg.IEdisynapticBias, None, cfg.IEdisynapticBias, cfg.IEdisynapticBias, cfg.IEdisynapticBias]
-    disynapticBias = None  # default, used for I->I
-
-    # preCellTypes = ['SOM', 'PV']
-    # ynorms = [[0,1]]*2
-    # IEweights = cfg.IEweights * 2  # [I->E2/3+4, I->E5, I->E6] weights (Note * 2 is repeat list operator)
-    # IIweights = cfg.IIweights * 2  # [I->I2/3+4, I->I5, I->I6] weights (Note * 2 is repeat list operator)
-    # postCellTypes = ['PT', ['IT','CT'], 'PV', 'SOM']
-    # IEdisynBiases = [cfg.IEdisynapticBias, cfg.IEdisynapticBias]
-    # disynapticBias = None  # default, used for I->I
-
-    for i,(prePop, ynorm, IEweight, IEdisynBias) in enumerate(zip(prePopTypes, ynorms, IEweights, IEdisynBiases)):
-        disynapticBias = IEdisynBias
-        if prePop.startswith('PV'):             # PV->E
-            weight = IEweight * cfg.IPTGain * cfg.PVEGain
-            synMech = PVSynMech
-            sec = 'perisom'
-        elif prePop.startswith('SOM'):                           # SOM->E
-            weight = IEweight * cfg.IPTGain * cfg.SOMEGain
-            synMech = SOMESynMech
-            sec = 'spiny'
-            synWeightFraction = cfg.synWeightFractionSOME
-        else:
-          continue
-        
-        weight = weight * cfg.IFullGain
-
-
-        ruleLabel = 'I_HH_full_'+str(i)
-        netParams.connParams[ruleLabel] = {
-            'preConds': {'pop': prePop, 'ynorm': ynorm},
-            'postConds': {'cellModel': 'HH_full', 'cellType': 'PT', 'ynorm': ynorm},
-            'synMech': synMech,
-            'probability': '1.0 * exp(-dist_3D_border/probLambda)',
-            'weight': weight / cfg.synsperconn['HH_full'],
-            'delay': 'defaultDelay+dist_3D_border/propVelocity',
-            'synsPerConn': cfg.synsperconn['HH_full'],
-            'synMechWeightFactor': synWeightFraction,
-            'sec': sec,
-            'disynapticBias': disynapticBias}
+    ruleLabel = 'I_HH_full_'+str(i)
+    netParams.connParams[ruleLabel] = {
+        'preConds': {'pop': prePop, 'ynorm': ynorm},
+        'postConds': {'cellModel': 'HH_full', 'cellType': 'PT', 'ynorm': ynorm},
+        'synMech': synMech,
+        'probability': '1.0 * exp(-dist_3D_border/probLambda)',
+        'weight': weight / cfg.synsperconn,
+        'delay': 'defaultDelay+dist_3D_border/propVelocity',
+        'synsPerConn': cfg.synsperconn,
+        'synMechWeightFactor': synWeightFraction,
+        'sec': sec,
+        'disynapticBias': disynapticBias}
 
 
 #------------------------------------------------------------------------------
 # Long-range  connectivity parameters
 #------------------------------------------------------------------------------
-if cfg.addLongConn:
+# load load experimentally based parameters for long range inputs
+cmatLong = connLongData['cmat']
+binsLong = connLongData['bins']
+longPops = ['TPO', 'TVL', 'S1', 'S2', 'cM1', 'M2', 'OC']
+EorI = ['exc', 'inh']
+syns = {'exc': ['AMPA', 'NMDA'], 'inh': 'GABAA'}
+synFracs = {'exc': cfg.synWeightFractionEE, 'inh': [1.0]}
 
-    # load load experimentally based parameters for long range inputs
-    cmatLong = connLongData['cmat']
-    binsLong = connLongData['bins']
-    longPops = ['TPO', 'TVL', 'S1', 'S2', 'cM1', 'M2', 'OC']
-    EorI = ['exc', 'inh']
-    syns = {'exc': ESynMech, 'inh': 'GABAA'}
-    synFracs = {'exc': cfg.synWeightFractionEE, 'inh': [1.0]}
-
-    for longPop in longPops:
-            for EorI in ['exc', 'inh']:
-                for i, (binRange, convergence) in enumerate(zip(binsLong[(longPop, 'PT')], cmatLong[(longPop, 'PT', EorI)])):
-                    ruleLabel = longPop+'_PT_'+EorI+'_HH_full_'+str(i)
-                    netParams.connParams[ruleLabel] = { 
-                        'preConds': {'pop': longPop}, 
-                        'postConds': {'cellModel': 'HH_full', 'cellType': 'PT', 'ynorm': list(binRange)},
-                        'synMech': syns[EorI],
-                        'convergence': convergence,
-                        'weight': cfg.weightLong / cfg.synsperconn['HH_full'], 
-                        'synMechWeightFactor': cfg.synWeightFractionEE,
-                        'delay': 'defaultDelay+dist_3D/propVelocity',
-                        'synsPerConn': cfg.synsperconn['HH_full'],
-                        'sec': 'spiny'}
+for longPop in longPops:
+        for EorI in ['exc', 'inh']:
+            for i, (binRange, convergence) in enumerate(zip(binsLong[(longPop, 'PT')], cmatLong[(longPop, 'PT', EorI)])):
+                ruleLabel = longPop+'_PT_'+EorI+'_HH_full_'+str(i)
+                netParams.connParams[ruleLabel] = { 
+                    'preConds': {'pop': longPop}, 
+                    'postConds': {'cellModel': 'HH_full', 'cellType': 'PT', 'ynorm': list(binRange)},
+                    'synMech': syns[EorI],
+                    'convergence': convergence,
+                    'weight': cfg.weightLong / cfg.synsperconn, 
+                    'synMechWeightFactor': cfg.synWeightFractionEE,
+                    'delay': 'defaultDelay+dist_3D/propVelocity',
+                    'synsPerConn': cfg.synsperconn,
+                    'sec': 'spiny'}
 
 
 #------------------------------------------------------------------------------
 # Subcellular connectivity (synaptic distributions)
 #------------------------------------------------------------------------------         
-if cfg.addSubConn:
-    with open('conn/conn_dend_PT.json', 'r') as fileObj: connDendPTData = json.load(fileObj)
-    with open('conn/conn_dend_IT.json', 'r') as fileObj: connDendITData = json.load(fileObj)
-    
-    #------------------------------------------------------------------------------
-    # L2/3,TVL,S2,cM1,M2 -> PT (Suter, 2015)
-    lenY = 30 
-    spacing = 50
-    gridY = range(0, -spacing*lenY, -spacing)
-    synDens, _, fixedSomaY = connDendPTData['synDens'], connDendPTData['gridY'], connDendPTData['fixedSomaY']
-    for k in synDens.keys():
-        prePop,postType = k.split('_')  # eg. split 'M2_PT'
+with open('conn/conn_dend_PT.json', 'r') as fileObj: connDendPTData = json.load(fileObj)
+with open('conn/conn_dend_IT.json', 'r') as fileObj: connDendITData = json.load(fileObj)
 
-        if postType == 'PT':
-            if prePop == 'L2': prePop = 'IT2'  # include conns from layer 2/3 and 4
-            netParams.subConnParams[k] = {
-            'preConds': {'pop': prePop}, 
-            'postConds': {'cellType': postType},  
-            'sec': 'spiny',
-            'groupSynMechs': ESynMech, 
-            'density': {'type': '1Dmap', 'gridX': None, 'gridY': gridY, 'gridValues': synDens[k], 'fixedSomaY': fixedSomaY}} 
+#------------------------------------------------------------------------------
+# L2/3,TVL,S2,cM1,M2 -> PT (Suter, 2015)
+synDens, gridY, fixedSomaY = connDendPTData['synDens'], connDendPTData['gridY'], connDendPTData['fixedSomaY']
+for k in synDens.keys():
+    prePop,postType = k.split('_')  # eg. split 'M2_PT'
 
-
-    #------------------------------------------------------------------------------
-    # TPO, TVL, M2, OC  -> E (L2/3, L5A, L5B, L6) (Hooks 2013)
-    lenY = 26
-    spacing = 50
-    gridY = range(0, -spacing*lenY, -spacing)
-    synDens, _, fixedSomaY = connDendITData['synDens'], connDendITData['gridY'], connDendITData['fixedSomaY']
-    for k in synDens.keys():
-        prePop,post = k.split('_')  # eg. split 'M2_L2'
-
-        if prePop in ['OC','TPO']:
-            postyRange = list(layer[post.split('L')[1]]) # get layer yfrac range 
-            if post == 'L2': postyRange[1] = layer['4'][1]  # apply L2 rule also to L4 
-            netParams.subConnParams[k] = {
-            'preConds': {'pop': prePop}, 
-            'postConds': {'ynorm': postyRange , 'cellType': 'PT'},  
-            'sec': 'spiny',
-            'groupSynMechs': ESynMech, 
-            'density': {'type': '1Dmap', 'gridX': None, 'gridY': gridY, 'gridValues': synDens[k], 'fixedSomaY': fixedSomaY}} 
-
-
-    #------------------------------------------------------------------------------
-    # rest of local E->E (exclude IT2->PT); uniform distribution over spiny      
-    netParams.subConnParams['non-IT2->E'] = {
-        'preConds': {'pop': ['IT4','IT5A','IT5B','PT5B','IT6','CT6']}, 
-        'postConds': {'cellType': 'PT'},
+    if postType == 'PT':
+        if prePop == 'L2': prePop = 'IT2'  # include conns from layer 2/3 and 4
+        netParams.subConnParams[k] = {
+        'preConds': {'pop': prePop}, 
+        'postConds': {'cellType': postType},  
         'sec': 'spiny',
-        'groupSynMechs': ESynMech, 
-        'density': 'uniform'} 
+        'groupSynMechs': ['AMPA', 'NMDA'], 
+        'density': {'type': '1Dmap', 'gridX': None, 'gridY': gridY, 'gridValues': synDens[k], 'fixedSomaY': fixedSomaY}} 
 
 
-    #------------------------------------------------------------------------------
-    # PV->E; perisomatic (no sCRACM)
-    netParams.subConnParams['PV->E'] = {
-        'preConds': {'pop': ['PV2','PV5A', 'PV5B', 'PV6']}, 
-        'postConds': {'cellType': 'PT'},  
-        'sec': 'perisom', 
-        'density': 'uniform'} 
+#------------------------------------------------------------------------------
+# TPO, TVL, M2, OC  -> E (L2/3, L5A, L5B, L6) (Hooks 2013)
+synDens, gridY, fixedSomaY = connDendITData['synDens'], connDendITData['gridY'], connDendITData['fixedSomaY']
+for k in synDens.keys():
+    prePop,post = k.split('_')  # eg. split 'M2_L2'
+
+    if prePop in ['OC','TPO']:
+        postyRange = list(layer[post.split('L')[1]]) # get layer yfrac range 
+        if post == 'L2': postyRange[1] = layer['4'][1]  # apply L2 rule also to L4 
+        netParams.subConnParams[k] = {
+        'preConds': {'pop': prePop}, 
+        'postConds': {'ynorm': postyRange , 'cellType': 'PT'},  
+        'sec': 'spiny',
+        'groupSynMechs': ['AMPA', 'NMDA'], 
+        'density': {'type': '1Dmap', 'gridX': None, 'gridY': gridY, 'gridValues': synDens[k], 'fixedSomaY': fixedSomaY}} 
 
 
-    #------------------------------------------------------------------------------
-    # SOM->E; apical dendrites (no sCRACM)
-    netParams.subConnParams['SOM->E'] = {
-        'preConds': {'pop': ['SOM2','SOM5A', 'SOM5B', 'SOM6']}, 
-        'postConds': {'cellType': 'PT'},  
-        'sec': 'apicdend',
-        'groupSynMechs': SOMESynMech,
-        'density': 'uniform'} 
+#------------------------------------------------------------------------------
+# rest of local E->E (exclude IT2->PT); uniform distribution over spiny      
+netParams.subConnParams['non-IT2->E'] = {
+    'preConds': {'pop': ['IT4','IT5A','IT5B','PT5B','IT6','CT6']}, 
+    'postConds': {'cellType': 'PT'},
+    'sec': 'spiny',
+    'groupSynMechs': ['AMPA', 'NMDA'], 
+    'density': 'uniform'} 
+
+
+#------------------------------------------------------------------------------
+# PV->E; perisomatic (no sCRACM)
+netParams.subConnParams['PV->E'] = {
+    'preConds': {'pop': ['PV2','PV5A', 'PV5B', 'PV6']}, 
+    'postConds': {'cellType': 'PT'},  
+    'sec': 'perisom', 
+    'density': 'uniform'} 
+
+
+#------------------------------------------------------------------------------
+# SOM->E; apical dendrites (no sCRACM)
+netParams.subConnParams['SOM->E'] = {
+    'preConds': {'pop': ['SOM2','SOM5A', 'SOM5B', 'SOM6']}, 
+    'postConds': {'cellType': 'PT'},  
+    'sec': 'apicdend',
+    'groupSynMechs': ['GABAASlow','GABAB'],
+    'density': 'uniform'} 
 
 
 
