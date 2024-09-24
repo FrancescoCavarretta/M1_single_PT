@@ -52,12 +52,21 @@ layer = {'1':[0.0, 0.1], '2': [0.1,0.29], '4': [0.29,0.37], '5A': [0.37,0.47], '
 netParams.correctBorder = {'threshold': [cfg.correctBorderThreshold, cfg.correctBorderThreshold, cfg.correctBorderThreshold], 
                         'yborders': [layer['2'][0], layer['5A'][0], layer['6'][0], layer['6'][1]]}  # correct conn border effect
 
-netParams.loadCellParamsRule(label='PT5B_full', fileName='cells/PT5B_full_cellParams.pkl')
 
+cellRule = netParams.importCellParams(label='PT5B_full', conds={'cellType': 'PT', 'cellModel': 'HH_full'}, fileName='cells/PTcell.hoc', cellName='PTcell', somaAtOrigin=True)
 
-#------------------------------------------------------------------------------
-# Population parameters
-#------------------------------------------------------------------------------
+netParams.addCellParamsSecList(label='PT5B_full', secListName='perisom', somaDist=[0, 50])  # sections within 50 um of soma
+netParams.addCellParamsSecList(label='PT5B_full', secListName='below_soma', somaDistY=[-600, 0])  # sections within 0-300 um of soma
+
+nonSpiny = ['apic_0', 'apic_1']
+
+for sec in nonSpiny:
+  cellRule['secLists']['perisom'].remove(sec)
+  
+cellRule['secLists']['alldend'] = [sec for sec in cellRule.secs if ('dend' in sec or 'apic' in sec)] # basal+apical
+cellRule['secLists']['apicdend'] = [sec for sec in cellRule.secs if ('apic' in sec)] # apical
+cellRule['secLists']['spiny'] = [sec for sec in cellRule['secLists']['alldend'] if sec not in  nonSpiny]
+
 
 #------------------------------------------------------------------------------
 ## load densities
@@ -410,3 +419,4 @@ netParams.description = """
 if __name__ == '__main__':
     print(len(netParams.connParams))
     print(len(netParams.subConnParams))
+    print(cellRule['secLists'])
