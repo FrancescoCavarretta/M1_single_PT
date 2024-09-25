@@ -19,6 +19,8 @@ try:
 except:
     from cfg import cfg
 
+from math import ceil
+
 #------------------------------------------------------------------------------
 #
 # NETWORK PARAMETERS
@@ -85,7 +87,7 @@ shortPops = [('IT2', '2', 1, ('M1','E'), 0), ('SOM2', '24', 1, ('M1','SOM'), 5),
 for popName, popLayer, scaleFactor, popKey1, popKey2 in shortPops:
     netParams.popParams[popName] = {'cellModel': 'VecStim', 'rate': cfg.ratesShort[popName], 'noise': noise, 'start': start, 'pulses': [], 'ynormRange': layer[popLayer], 'density': scaleFactor*density[popKey1][popKey2]}
 
-netParams.popParams['PT5B_full'] =   {'cellModel': 'HH_full', 'cellType': 'PT', 'numCells':1}
+netParams.popParams['PT5B_full'] =   {'cellModel': 'HH_full', 'cellType': 'PT', 'numCells':int(ceil(1/cfg.scale))}
 
 #------------------------------------------------------------------------------
 ## Long-range input populations (VecStims)
