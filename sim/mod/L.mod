@@ -134,7 +134,7 @@ FUNCTION efun(z) {
 	} else if(z >= 700) {
 		efun = 0
 	} else if(z <= -700) {
-		efun = -1
+		efun = -z
 	} else {
 		efun = z / (exp(z) - 1)
 	}
