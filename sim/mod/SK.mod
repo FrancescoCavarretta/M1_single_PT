@@ -120,6 +120,6 @@ PROCEDURE rates(ca (mM)) {
 	mtau = (mtau_min + mtau_factor * 1 / (alpha(ca) + beta(ca))) / q
 
     : activation
-	minf = 1 / (1 + safe_exp(-(log(ca) + 3.58 + cshift) / (0.217 * mk_factor) ))
+	minf = 1 / (1 + safe_exp(-(log(ca) + log(1000) + 0.58 + cshift) / (0.217 * mk_factor) ))
 }
 
