@@ -80,11 +80,22 @@ DERIVATIVE states {
   h' = (hinf - h) / htau
 }
 
+
+FUNCTION safe_exp(x) {
+  if(x >= 700) {
+    x = 700
+  } else if (x <= -700) {
+    x = -700
+  }
+
+  safe_exp = exp(x)
+}
+
 FUNCTION efun(z) {
   if(fabs(z) < 1e-5) {
     efun = 1
   } else {
-    efun = z / (exp(z) - 1)
+    efun = z / (safe_exp(z) - 1)
   }
 }
 
@@ -94,13 +105,13 @@ PROCEDURE rates(v (mV)) { LOCAL a, b
   b = 0.744 * efun((v + 38) / 6)
 
   mtau = (mtau_min + mtau_factor / (a + b)) / qm
-  minf = 1 / (1 + exp(-(v + 38 + 2.3) / (6 * mk_factor) ))
+  minf = 1 / (1 + safe_exp(-(v + 38 + 2.3) / (6 * mk_factor) ))
 
 
   a = 0.09 * efun((v + 66 + wshift) / 6) 
   b = 0.09 * efun(-(v + 66 + wshift) / 6) 
 
   htau = (htau_min + htau_factor / (a + b)) / qh
-  hinf = 1 / (1 + exp((v + 66 + wshift) / (6 * hk_factor) ))
+  hinf = 1 / (1 + safe_exp((v + 66 + wshift) / (6 * hk_factor) ))
 
 }

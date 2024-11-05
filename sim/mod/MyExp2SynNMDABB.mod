@@ -58,11 +58,21 @@ INITIAL {
   factor2 = 1/factor2  
 }
 
+FUNCTION safe_exp(x) {
+  if(x >= 700) {
+    x = 700
+  } else if (x <= -700) {
+    x = -700
+  }
+
+  safe_exp = exp(x)
+}
+
 BREAKPOINT {
   LOCAL iTOT
   SOLVE state METHOD cnexp
   : Jahr Stevens 1990 J. Neurosci
-  mgblock = 1.0 / (1.0 + 0.28 * exp(-0.062(/mV) * v) )
+  mgblock = 1.0 / (1.0 + 0.28 * safe_exp(-0.062(/mV) * v) )
   sNMDA = B2 - A2
   if (sNMDA>sNMDAmax) {sNMDA=sNMDAmax}: saturation
 

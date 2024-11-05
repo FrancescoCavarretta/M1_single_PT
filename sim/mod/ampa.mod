@@ -1,4 +1,4 @@
-TITLE simple AMPA receptors
+:TITLE simple AMPA receptors
 
 COMMENT
 -----------------------------------------------------------------------------

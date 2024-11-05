@@ -118,6 +118,24 @@ DERIVATIVE states {
 	h' = (hinf - h) / htau
 }
 
+FUNCTION safe_exp(x) {
+  if(x >= 700) {
+    x = 700
+  } else if (x <= -700) {
+    x = -700
+  }
+
+  safe_exp = exp(x)
+}
+
+
+FUNCTION efun(z) {
+	if (fabs(z) < 1e-5) {
+		efun = 1
+	} else {
+		efun = z / (safe_exp(z) - 1)
+	}
+}
 
 PROCEDURE rates(v (mV)) {
 
@@ -138,17 +156,17 @@ PROCEDURE rates(v (mV)) {
 :
 
 
-	mtau = (mtau_min + mtau_factor * ( 0.612 + 1 / ( exp(-(v + 134 - vhm) / 16.7) + exp((v + 18.8 - vhm) / 18.2) ) )) / qm
+	mtau = (mtau_min + mtau_factor * ( 0.612 + 1 / ( safe_exp(-(v + 134 - vhm) / 16.7) + safe_exp((v + 18.8 - vhm) / 18.2) ) )) / qm
 
 
 	if (v < (-82 + vhh - wshift)) {
-		htau = (htau_min + htau_factor * exp((v + 469 - vhh + wshift) / 66.6)          ) / qh
+		htau = (htau_min + htau_factor * safe_exp((v + 469 - vhh + wshift) / 66.6)          ) / qh
 	} else {
-		htau = (htau_min + htau_factor * ( 28 + exp(-(v + 24 - vhh + wshift) / 10.5) ) ) / qh
+		htau = (htau_min + htau_factor * ( 28 + safe_exp(-(v + 24 - vhh + wshift) / 10.5) ) ) / qh
 	}
 
-	minf = 1 / ( 1 + exp(-(v + 59 - vhm) / (6.2 * mk_factor) ) )
-	hinf = 1 / ( 1 + exp( (v + 83 - vhh + wshift) / (4 * hk_factor) ) )
+	minf = 1 / ( 1 + safe_exp(-(v + 59 - vhm) / (6.2 * mk_factor) ) )
+	hinf = 1 / ( 1 + safe_exp( (v + 83 - vhh + wshift) / (4 * hk_factor) ) )
 }
 
 
@@ -164,11 +182,4 @@ FUNCTION ghk(v(mV), ci(mM), co(mM)) (.001 coul/cm3) { LOCAL z, eci, eco
 }
 
 
-FUNCTION efun(z) {
-	if (fabs(z) < 1e-5) {
-		efun = 1
-	} else {
-		efun = z / (exp(z) - 1)
-	}
-}
 

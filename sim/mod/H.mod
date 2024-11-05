@@ -73,12 +73,21 @@ DERIVATIVE states {
 	h' = (hinf - h) / htau
 }
 
+FUNCTION safe_exp(x) {
+  if(x >= 700) {
+    x = 700
+  } else if (x <= -700) {
+    x = -700
+  }
+
+  safe_exp = exp(x)
+}
 
 FUNCTION efun(z) {
   if(fabs(z) < 1e-5) {
     efun = 1
   } else {
-    efun = z / (exp(z) - 1)
+    efun = z / (safe_exp(z) - 1)
   }
 }
 
@@ -92,7 +101,7 @@ PROCEDURE rates(v (mV)){ LOCAL a, b
 	: 0.076517*efun((v+154.9)/11.9)
 
 	a = 0.076517 * efun((v + 154.9) / 11.9)
-	b = 0.193 * exp(v / 33.1)
+	b = 0.193 * safe_exp(v / 33.1)
 
 	: time constant
 	htau = (htau_min + htau_factor / (a + b)) / q

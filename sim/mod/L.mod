@@ -6,7 +6,7 @@ NEURON {
 	SUFFIX caL
 	USEION ca_hvaNL READ ca_hvaNLi WRITE ica_hvaNL
 	USEION ca READ cai, cao
-	RANGE pbar, q10
+	RANGE pbar, q10, minf, linf
 
 	GLOBAL vshift, mtau_factor, mtau_min, ltau_factor, linf_min, nlinf, klinf
 	GLOBAL mk_factor
@@ -90,19 +90,29 @@ DERIVATIVE states {
 }
 
 
+FUNCTION safe_exp(x) {
+  if(x >= 700) {
+    x = 700
+  } else if (x <= -700) {
+    x = -700
+  }
+
+  safe_exp = exp(x)
+}
+
 PROCEDURE rates(v (mV), cai (mM)) { LOCAL a, b
 
-	a = 1.6 / (1 + exp(-0.072 * (v + 5)))
+	a = 1.6 / (1 + safe_exp(-0.072 * (v + 5)))
 	b = 0.1072 * efun((v + 8.69) / 5.36)
 
 	mtau = (mtau_min + mtau_factor / (a + b)) / q
 
-	minf = 1 / (1 + exp(-(v + 19.48) / (9.6 * mk_factor) ))	
+	minf = 1 / (1 + safe_exp(-(v + 19.48) / (9.6 * mk_factor) ))	
 
 	: ca dependent inactivation
 	taul = ltau_factor 
 
-	linf = (1 - linf_min) / ( 1 + ((klinf / cai) ^ nlinf) ) + linf_min
+	linf = (1 - linf_min) / ( 1 + safe_exp((log(cai) - log(klinf)) / (-1/nlinf)) ) + linf_min :(1 - linf_min) / ( 1 + ((klinf / cai) ^ nlinf) ) + linf_min
 }
 
 
@@ -122,7 +132,7 @@ FUNCTION efun(z) {
 	if (fabs(z) < 1e-5) {
 		efun = 1
 	} else {
-		efun = z / (exp(z) - 1)
+		efun = z / (safe_exp(z) - 1)
 	}
 }
 

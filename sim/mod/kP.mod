@@ -87,16 +87,26 @@ DERIVATIVE states {
 	h' = (hinf - h) / htau
 }
 
+FUNCTION safe_exp(x) {
+  if(x >= 700) {
+    x = 700
+  } else if (x <= -700) {
+    x = -700
+  }
+
+  safe_exp = exp(x)
+}
+
 
 PROCEDURE rates(v (mV)) {
 	if (v < -50) {
-		mtau =	(mtau_min + mtau_factor * (1.25 + 175.03	* exp(	v * 0.026	)))  / qm
+		mtau =	(mtau_min + mtau_factor * (1.25 + 175.03	* safe_exp(	v * 0.026	)))  / qm
 	} else {
-		mtau =	(mtau_min + mtau_factor * (1.25 + 13		* exp( -v * 0.026	)))  / qm
+		mtau =	(mtau_min + mtau_factor * (1.25 + 13		* safe_exp( -v * 0.026	)))  / qm
 	}
 
-	htau = (htau_min + htau_factor * ( 360 + (1010 + 24 * (v + 55 + wshift) ) * exp(-( (v + 75 + wshift) / 48) ^ 2) )) / qh
+	htau = (htau_min + htau_factor * ( 360 + (1010 + 24 * (v + 55 + wshift) ) * safe_exp(-( (v + 75 + wshift) / 48) ^ 2) )) / qh
 
-	minf = 1 / (1 + exp(-(v + 1 ) / (12 * mk_factor) ))
-	hinf = 1 / (1 + exp( (v + 54 + wshift) / (11 * hk_factor) ))
+	minf = 1 / (1 + safe_exp(-(v + 1 ) / (12 * mk_factor) ))
+	hinf = 1 / (1 + safe_exp( (v + 54 + wshift) / (11 * hk_factor) ))
 }

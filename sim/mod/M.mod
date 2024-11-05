@@ -88,15 +88,24 @@ DERIVATIVE states {
 	m' = (minf - m ) / mtau
 }
 
+FUNCTION safe_exp(x) {
+  if(x >= 700) {
+    x = 700
+  } else if (x <= -700) {
+    x = -700
+  }
+
+  safe_exp = exp(x)
+}
 
 PROCEDURE rates(v (mV)) {
 	: see ref 2 for both
 
 	: time constant
-	mtau = (mtau_min + mtau_factor * (13.4 + 26.3 * exp(-((v + 29.7) / 30.3) ^ 2))) / q
+	mtau = (mtau_min + mtau_factor * (13.4 + 26.3 * safe_exp(-((v + 29.7) / 30.3) ^ 2))) / q
 		          
 	: see Fig. 2, Ref. 1
-	minf = 1 / (1 + exp(-(v + 36.7) / (9.48 * mk_factor) )) : activation
+	minf = 1 / (1 + safe_exp(-(v + 36.7) / (9.48 * mk_factor) )) : activation
 }
 
 

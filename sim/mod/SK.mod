@@ -103,23 +103,23 @@ FUNCTION safe_exp(x) {
 
 
 FUNCTION alpha(cai (uM)) { LOCAL ps
-  ps = 0.74 / (1 + safe_exp((log10(cai) + 0.34) / 0.11)) + 0.26
+  ps = 0.74 / (1 + safe_exp((log10(cai) + 3.34) / 0.11)) + 0.26
   alpha = 1 / (1.091 * ps + 7.694 * (1 - ps))
 }
 
 
 FUNCTION beta(cai (uM)) { LOCAL pl, ps, tau_long
-  ps = 0.75 / (1 + safe_exp(-(log10(cai) + 0.44) / 0.1)) 
-  pl = 0.97 / (1 + safe_exp((log10(cai) + 0.52) / 0.09)) + 0.03
-  tau_long =  765.39 * safe_exp(-(cai - 0.31) / 0.01) + 89.42
+  ps = 0.75 / (1 + safe_exp(-(log10(cai) + 3.44) / 0.1)) 
+  pl = 0.97 / (1 + safe_exp((log10(cai) + 3.52) / 0.09)) + 0.03
+  tau_long =  765.39 * safe_exp(-(cai * 1000 - 0.31) / 0.01) + 89.42
   beta = 1 / (0.847 * ps + tau_long * pl + 4.59 * (1 - ps - pl))
 }
 
 PROCEDURE rates(ca (mM)) { 
 	: time constant
-	mtau = (mtau_min + mtau_factor * 1 / (alpha(ca * 1000) + beta(ca * 1000))) / q
+	mtau = (mtau_min + mtau_factor * 1 / (alpha(ca) + beta(ca))) / q
 
     : activation
-	minf = 1 / (1 + safe_exp(-(log(ca * 1000) + 0.58 + cshift) / (0.217 * mk_factor) ))
+	minf = 1 / (1 + safe_exp(-(log(ca) + 3.58 + cshift) / (0.217 * mk_factor) ))
 }
 

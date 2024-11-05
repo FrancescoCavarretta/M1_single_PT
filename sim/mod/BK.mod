@@ -108,21 +108,35 @@ DERIVATIVE states {
 	m' = (minf - m ) / mtau
 }
 
+
+FUNCTION safe_exp(x) {
+  if(x >= 700) {
+    x = 700
+  } else if (x <= -700) {
+    x = -700
+  }
+
+  safe_exp = exp(x)
+}
+
+
 FUNCTION efun(z) {
   if(fabs(z) < 1e-5) {
     efun = 1
   } else {
-    efun = z / (exp(z) - 1)
+    efun = z / (safe_exp(z) - 1)
   }
 }
+
 
 FUNCTION alpha(v (mV), cai (uM)) { 
 	: see Fig. 3 in Ref 1
 
 	LOCAL vh
 
-	vh = -48.8 + 101.6 / (1 + ((20.0 / cai) ^ (-3.1)))
-	:alpha = -0.2 * (v - vh) / 2.7  / ( exp(-(v - vh) / 2.7) - 1)
+:	vh = -48.8 + 101.6 / (1 + ((20.0 / cai) ^ (-3.1)))
+	vh = -48.8 + 101.6 / (1 + safe_exp((log(cai) + log(1000) - log(20)) / (1/3.1)))
+	:alpha = -0.2 * (v - vh) / 2.7  / ( safe_exp(-(v - vh) / 2.7) - 1)
 	alpha = -0.2 * 2.7 * efun(-(v - vh) / 2.7)
 }
 
@@ -132,8 +146,9 @@ FUNCTION beta(v (mV), cai (uM)) {
 
 	LOCAL vh
 
-	vh = -542.0 + 317.2 / (1 + ((2.5 / cai) ^ (-0.2)))
-	beta = 1550.2 * exp(-(v - vh) / 57.9)
+	:vh = -542.0 + 317.2 / (1 + ((2.5 / cai) ^ (-0.2)))
+	vh = -542.0 + 317.2 / (1 + safe_exp((log(cai) + log(1000) - log(2.5)) / (1/0.2)))
+	beta = 1550.2 * safe_exp(-(v - vh) / 57.9)
 }
 
 
@@ -141,7 +156,7 @@ FUNCTION m_vh_calc(cai (uM)) {
 	: Upper and lower bounds estimated from bold line in Fig. 2D, Ref. 1
 	: Linear component estimated from Fig. 2A, Ref. 2
 
-	m_vh_calc = 40.5 * log(11.1 / cai) + 30.0
+	m_vh_calc = 40.5 * (log(11.1) - log(cai) - log(1000)) + 30.0
 
 	if(m_vh_calc < -40) {
 		m_vh_calc = -40
@@ -153,13 +168,13 @@ FUNCTION m_vh_calc(cai (uM)) {
 
 PROCEDURE rates(v (mV), cai (mM)) { 
 	: time constant
-	mtau =1 :(mtau_min + mtau_factor / (alpha(v, cai * 1000) + beta(v, cai * 1000))) / q
+	mtau = 1 :(mtau_min + mtau_factor / (alpha(v, cai) + beta(v, cai))) / q
 	
 	: half value
-	mvhalf = m_vh_calc(cai * 1000)
+	mvhalf = m_vh_calc(cai)
 
 	: see Fig. 2, Ref. 1
-	minf = 1 / (1 + exp(-(v - mvhalf) / (11.5 * mk_factor) )) : activation
+	minf = 1 / (1 + safe_exp(-(v - mvhalf) / (11.5 * mk_factor) )) : activation
 }
 
 
