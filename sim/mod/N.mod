@@ -101,6 +101,18 @@ FUNCTION safe_exp(x) {
   safe_exp = exp(x)
 }
 
+FUNCTION efun(z) {
+	if (fabs(z) < 1e-5) {
+		efun = 1
+	} else if(z >= 700) {
+		efun = 0
+	} else if(z <= -700) {
+		efun = -1
+	} else {
+		efun = z / (exp(z) - 1)
+	}
+}
+
 
 PROCEDURE rates(v (mV), cai (mM)) { 
 	: time constant
@@ -135,11 +147,4 @@ FUNCTION ghk(v(mV), ci(mM), co(mM)) (.001 coul/cm3) { LOCAL z, eci, eco
 }
 
 
-FUNCTION efun(z) {
-	if (fabs(z) < 1e-5) {
-		efun = 1
-	} else {
-		efun = z / (safe_exp(z) - 1)
-	}
-}
 

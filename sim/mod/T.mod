@@ -132,8 +132,12 @@ FUNCTION safe_exp(x) {
 FUNCTION efun(z) {
 	if (fabs(z) < 1e-5) {
 		efun = 1
+	} else if(z >= 700) {
+		efun = 0
+	} else if(z <= -700) {
+		efun = -1
 	} else {
-		efun = z / (safe_exp(z) - 1)
+		efun = z / (exp(z) - 1)
 	}
 }
 
