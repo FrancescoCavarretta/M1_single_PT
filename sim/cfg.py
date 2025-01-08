@@ -5,12 +5,32 @@ Simulation configuration for M1 model (using NetPyNE)
 
 Contributors: salvadordura@gmail.com
 """
-import sys
 
-
-  
+import argparse
 from netpyne import specs
-import pickle
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument('--duration', type=float, default=25000.0, help='simulated time')
+parser.add_argument('-o', '--output', type=str, default='default', help='filename of output data')
+parser.add_argument('--seed', type=int, default=0, help='indicate the simulation seed')
+
+parser.add_argument('--dt', type=float, default=0.01, help='time step describing resolution of the spike time generator (ms)')
+parser.add_argument('-r', '--refractory_period', type=float, default=3, help='refractory period length following an action potential (ms)')
+parser.add_argument('--reg', type=float, default=5, help='regularity score of tonic firing')
+parser.add_argument('--synapses', type=str, default='', help='modulated synapses')
+parser.add_argument('--modlength', type=float, default=500, help='modulated epoch duration (ms)')
+parser.add_argument('-f', '--factor', type=float, default=1, help='factor describing the change in firing rate compared to baseline')
+parser.add_argument('--modstart', type=float, default=5000, help='start of modulation')
+parser.add_argument('--modulation_rate', type=float, default=0.5, help='modulation occurrence rate')
+parser.add_argument('--mod_reg_intra', type=float, default=50000, help='regularity of intra-epocal modulation occurrence')
+parser.add_argument('--mod_reg_extra', type=float, default=50000, help='regularity of modulation occurrence (ie, synchrony)')
+
+parser.add_argument('--parkinsonian', action='store_true', help='switch indicating parkinsonian state simulation')
+
+args, _ = parser.parse_known_args()
+
+
 
 cfg = specs.SimConfig()  
 
@@ -161,15 +181,15 @@ cfg.compactConnFormat = 0
 #------------------------------------------------------------------------------
 # Analysis and plotting 
 #------------------------------------------------------------------------------
-with open('cells/popColors.pkl', 'rb') as fileObj: popColors = pickle.load(fileObj)['popColors']
-
-cfg.analysis['plotRaster'] = {'include': allpops, 'orderBy': ['pop', 'y'], 'timeRange': [0, cfg.duration], 'saveFig': True, 'showFig': False, 'popRates': True, 'orderInverse': True, 'popColors': popColors, 'figSize': (12,10), 'lw': 0.3, 'markerSize':3, 'marker': '.', 'dpi': 300} 
-
-
-cfg.analysis['plotLFP'] = {'plots': ['timeSeries'], 'electrodes': list(range(len(cfg.recordLFP))), 'figSize': (12,10), 'timeRange': [1000,5000],  'saveFig': True, 'showFig':False} 
-
-
-cfg.analysis['plotTraces'] = {'include': [], 'timeRange': [0, cfg.duration], 'oneFigPer': 'trace', 'figSize': (10,4), 'saveFig': True, 'showFig': False} 
+##with open('cells/popColors.pkl', 'rb') as fileObj: popColors = pickle.load(fileObj)['popColors']
+##
+##cfg.analysis['plotRaster'] = {'include': allpops, 'orderBy': ['pop', 'y'], 'timeRange': [0, cfg.duration], 'saveFig': True, 'showFig': False, 'popRates': True, 'orderInverse': True, 'popColors': popColors, 'figSize': (12,10), 'lw': 0.3, 'markerSize':3, 'marker': '.', 'dpi': 300} 
+##
+##
+##cfg.analysis['plotLFP'] = {'plots': ['timeSeries'], 'electrodes': list(range(len(cfg.recordLFP))), 'figSize': (12,10), 'timeRange': [1000,5000],  'saveFig': True, 'showFig':False} 
+##
+##
+##cfg.analysis['plotTraces'] = {'include': [], 'timeRange': [0, cfg.duration], 'oneFigPer': 'trace', 'figSize': (10,4), 'saveFig': True, 'showFig': False} 
 
 
 
@@ -236,9 +256,11 @@ cfg.ratesShort = {'ENGF':10, 'IT2/3/4':0.6, 'IT5':4, 'IT6':0.6, 'PT5B':6.4,
 
 
 #cfg.numCells = {'IT6':262, 'SOM-T':336, 'ENGF':17, 'IT2/3/4':288, 'SOM-FO':45, 'SOM-NMC':17, 'IT5':119+542, 'PT5B':362, 'PV':46, 'CX':271, 'SOM-OTHERS':150, 'VM_L1':25, 'VM_L5':25}
-vm_n = 8
+##vm_n = 8
 
-cfg.numCells = {'IT6':262, 'SOM-T':336, 'ENGF':17, 'IT2/3/4':288, 'SOM-FO':45, 'SOM-NMC':17, 'IT5':119+542, 'PT5B':362, 'PV':46, 'CX':271, 'SOM-OTHERS':175, 'VM_L1':vm_n, 'VM_L5':int(round(vm_n * 6.4/2.6)) }
+#cfg.numCells = {'IT6':262, 'SOM-T':336, 'ENGF':17, 'IT2/3/4':288, 'SOM-FO':45, 'SOM-NMC':17, 'IT5':119+542, 'PT5B':362, 'PV':46, 'CX':271, 'SOM-OTHERS':175, 'VM_L1':8, 'VM_L5':20 }
+
+cfg.numCells = {'IT6':2, 'SOM-T':2, 'ENGF':2, 'IT2/3/4':2, 'SOM-FO':2, 'SOM-NMC':2, 'IT5':2, 'PT5B':2, 'PV':2, 'CX':2, 'SOM-OTHERS':2, 'VM_L1':2, 'VM_L5':2 }
 
 ginh1 = 0.0002
 ginh4 = 0.00095
@@ -251,7 +273,7 @@ gexc2 = 0.001
 cfg.g = {'IT6':gexc1, 'SOM-T':ginh1, 'ENGF':ginh1, 'IT2/3/4':(gexc1 + gexc2) / 2, 'SOM-FO':ginh3, 'SOM-NMC':ginh3, 'IT5':gexc2, 'PT5B':gexc2, 'PV':ginh2, 'CX':(gexc1 + gexc2) / 2, 'SOM-OTHERS':ginh4, 'VM_L1':gexc1, 'VM_L5':gexc2}
 
 
-if '--parkinsonian' in sys.argv:
+if args.parkinsonian:
     cfg.numCells['VM_L1'] = int(round(cfg.numCells['VM_L1'] * 0.73))
     cfg.numCells['VM_L5'] = int(round(cfg.numCells['VM_L5'] * 0.65))
     cfg.g['VM_L1'] = cfg.g['VM_L1'] / 0.73
@@ -282,15 +304,9 @@ cfg.NetStim1 = {'pop': 'IT2', 'ynorm':[0,1], 'sec': 'soma', 'loc': 0.5, 'synMech
 				'start': 500, 'interval': 1000.0/60.0, 'noise': 0.0, 'number': 60.0, 'weight': 30.0, 'delay': 0}
 
 
-try:
-  import pickle
-  import sys
-  
-  configs = pickle.load(open(sys.argv[sys.argv.index('--simname')+1], 'rb'))
 
-  cfg.duration = configs['tstop']
-  cfg.simLabel = configs['output']; cfg.saveFolder = '../data/' + cfg.simLabel
+cfg.duration = args.duration
+cfg.simLabel = args.output
+cfg.saveFolder = '../data/' + args.output
+cfg.seeds = {'conn':args.seed, 'stim':args.seed+1, 'loc':args.seed+2} 
 
-  cfg.seeds = {'conn': configs['seed'], 'stim': configs['seed']+1, 'loc': configs['seed']+2} 
-except:
-  pass

@@ -1,18 +1,14 @@
 from netpyne import specs
 import pickle, json
 import numpy as np
+import mk_spike_trains as mkst
 
 netParams = specs.NetParams()
 
 netParams.version = 56
 
-try:
-    from __main__ import cfg
-except:
-    from cfg import cfg
-    
-import pickle
-import sys
+from cfg import cfg, args
+
 
 #------------------------------------------------------------------------------
 # General connectivity parameters
@@ -26,7 +22,7 @@ netParams.defineCellShapes = True  # convert stylized geoms to 3d points
 #------------------------------------------------------------------------------
 # Cell parameters
 #------------------------------------------------------------------------------
-pt_cell_filename = 'PTcell_6OHDA.hoc' if '--parkinsonian' in sys.argv else  'PTcell.hoc'
+pt_cell_filename = 'PTcell_6OHDA.hoc' if args.parkinsonian else  'PTcell.hoc'
 
 cellRule = netParams.importCellParams(label='PT5B_full', conds={'cellType': 'PT', 'cellModel': 'HH_full'}, fileName='cells/%s' % pt_cell_filename, cellName='PTcell', somaAtOrigin=True)
 
@@ -79,12 +75,12 @@ netParams.popParams['PT5B_full'] =   {'cellModel': 'HH_full', 'cellType': 'PT', 
 #('SOM-OTHERS', 100),
 
 
-simname = sys.argv[sys.argv.index('--simname')+1]
-spktrains = pickle.load(open(simname, 'rb'))['spiketrains']
+
 
 # create input populations
-for popName, n in cfg.numCells.items():
-    netParams.popParams[popName] = {'cellModel': 'VecStim', 'numCells':int(n), 'cellType':popName, 'spkTimes':spktrains[popName]}
+for popName, spktimes in mkst.gen_spike_trains().items():
+    spktimes = [[1,2,3],[4,5,6]]
+    netParams.popParams[popName] = {'cellModel': 'VecStim', 'numCells':len(spktimes), 'cellType':popName, 'spkTimes':spktimes}
 
 
     
