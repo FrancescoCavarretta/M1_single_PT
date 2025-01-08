@@ -16,13 +16,11 @@
 : :   Elife 3 (2014): e03255. --- See Fig. 1
 
 NEURON {
-	SUFFIX kBK
+	SUFFIX kBK2
 	USEION k READ ek WRITE ik
 	RANGE gbar, q10 
-
-	RANGE mtau_factor, mtau_min, vshift, mk_factor
-
-	RANGE minf, mtau, mvhalf, vsh
+	GLOBAL vshift, mtau_factor, mtau_min
+	RANGE minf, mtau, mvhalf
 
 	USEION ca_hvaP READ ca_hvaPi
 	USEION ca_hvaNL READ ca_hvaNLi
@@ -30,7 +28,7 @@ NEURON {
 	USEION ca READ cai
 
 	GLOBAL w_hvaP, w_hvaNL, w_lva
-
+	GLOBAL mk_factor
 }
 
 
@@ -60,8 +58,6 @@ PARAMETER {
 	w_hvaNL		= 1		(1)
 	w_lva		= 0 	(1)
 	mk_factor	= 1		(1)
-
-	vsh			= 0		(mV)
   
 }
 
@@ -176,7 +172,7 @@ FUNCTION m_vh_calc(cai (uM)) {
 
 PROCEDURE rates(v (mV), cai (mM)) { 
 	: time constant
-	mtau = (mtau_min + mtau_factor / (alpha(v + vsh, cai) + beta(v + vsh, cai))) / q
+	mtau = 1 :(mtau_min + mtau_factor / (alpha(v, cai) + beta(v, cai))) / q
 	
 	: half value
 	mvhalf = m_vh_calc(cai)

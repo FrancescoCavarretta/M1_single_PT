@@ -5,7 +5,10 @@ Simulation configuration for M1 model (using NetPyNE)
 
 Contributors: salvadordura@gmail.com
 """
+import sys
 
+
+  
 from netpyne import specs
 import pickle
 
@@ -21,22 +24,22 @@ cfg = specs.SimConfig()
 #------------------------------------------------------------------------------
 # Run parameters
 #------------------------------------------------------------------------------
-cfg.duration = 1*1e3 
-cfg.dt = 0.025
+cfg.duration = 25e3 
+cfg.dt = 0.05
 cfg.seeds = {'conn': 4321, 'stim': 1234, 'loc': 4321} 
-cfg.hParams = {'celsius': 34, 'v_init': -80}  
-cfg.verbose = 0
+cfg.hParams = {'celsius': 34, 'v_init': -80.1}  
+cfg.verbose = 1
 cfg.createNEURONObj = 1
 cfg.createPyStruct = 1
-cfg.connRandomSecFromList = False  # set to false for reproducibility 
-cfg.cvode_active = False
-cfg.cvode_atol = 1e-6
+cfg.connRandomSecFromList = True  # set to false for reproducibility 
+#cfg.cvode_active = True
+#cfg.cvode_atol = 1e-6
 cfg.cache_efficient = True
 cfg.printRunTime = 0.1
 cfg.oneSynPerNetcon = True  # only affects conns not in subconnParams; produces identical results
 
 cfg.includeParamsLabel = False #True # needed for modify synMech False
-cfg.printPopAvgRates = [1000., 5000.]
+cfg.printPopAvgRates = [2000., 5000.]
 
 cfg.checkErrors = False
 
@@ -47,13 +50,88 @@ cfg.intervalFolder = 'interval_saving'
 #------------------------------------------------------------------------------
 # Recording 
 #------------------------------------------------------------------------------
-allpops = ['PT5B_full']
-
-cfg.recordTraces = {'V_soma': {'sec':'soma', 'loc':0.5, 'var':'v'}}#,
-					#'V_soma_ih': {'sec':'soma', 'loc':0.5, 'var':'gbar', 'mech':'hd', 'conds':{'pop': 'PT5B'}}}
-					# 'V_apic_26': {'sec':'apic_26', 'loc':0.5, 'var':'v', 'conds':{'pop': 'PT5B'}},
-					# 'V_dend_5': {'sec':'dend_5', 'loc':0.5, 'var':'v', 'conds':{'pop': 'PT5B'}}}
-					#'I_AMPA_Adend2': {'sec':'Adend2', 'loc':0.5, 'synMech': 'AMPA', 'var': 'i'}}
+allpops = ['PT5B']
+cfg.recordCells = [0]
+cfg.recordTraces = {'V_soma': {'sec':'soma', 'loc':0.5, 'var':'v'},
+                               'iN_apic_distal_62': {'sec':'apic_62', 'loc':1, 'var':'iN_caN'},
+                               'iL_apic_distal_62': {'sec':'apic_62', 'loc':1, 'var':'iL_caL'},
+                               'P_apic_distal_62': {'sec':'apic_62', 'loc':1, 'var':'ica_hvaP'},
+                               'NL_apic_distal_62': {'sec':'apic_62', 'loc':1, 'var':'ica_hvaNL'},
+                               'lva_apic_distal_62': {'sec':'apic_62', 'loc':1, 'var':'ica_lva'},
+                               'caNL_apic_distal_62': {'sec':'apic_62', 'loc':1, 'var':'ca_hvaNLi'},
+##                               'iN_apic_distal_62': {'sec':'apic_62', 'loc':1, 'var':'iN_caN'},
+##                               'iL_apic_distal_62': {'sec':'apic_62', 'loc':1, 'var':'iL_caL'},
+##                               'P_apic_distal_62': {'sec':'apic_62', 'loc':1, 'var':'ica_hvaP'},
+##                               'NL_apic_distal_62': {'sec':'apic_62', 'loc':1, 'var':'ica_hvaNL'},
+##                               'lva_apic_distal_62': {'sec':'apic_62', 'loc':1, 'var':'ica_lva'},
+                               'V_apic_distal_62': {'sec':'apic_62', 'loc':1, 'var':'v'},
+                               'V_apic_distal_91': {'sec':'apic_91', 'loc':1, 'var':'v'},
+                               'tau_apic_distal_62': {'sec':'apic_62', 'loc':1, 'var':'mtau_caN'},
+                               'tau_apic_distal_91': {'sec':'apic_91', 'loc':1, 'var':'mtau_caN'},
+##                               'iN_apic_distal_91': {'sec':'apic_91', 'loc':1, 'var':'iN_caN'},
+##                               'iL_apic_distal_91': {'sec':'apic_91', 'loc':1, 'var':'iL_caL'},
+##                               'P_apic_distal_91': {'sec':'apic_91', 'loc':1, 'var':'ica_hvaP'},
+##                               'NL_apic_distal_91': {'sec':'apic_91', 'loc':1, 'var':'ica_hvaNL'},
+##                               'lva_apic_distal_91': {'sec':'apic_91', 'loc':1, 'var':'ica_lva'},
+##                               'iN_apic_distal_91': {'sec':'apic_91', 'loc':1, 'var':'iN_caN'},
+##                               'iL_apic_distal_91': {'sec':'apic_91', 'loc':1, 'var':'iL_caL'},
+##                               'P_apic_distal_91': {'sec':'apic_91', 'loc':1, 'var':'ica_hvaP'},
+##                               'NL_apic_distal_91': {'sec':'apic_91', 'loc':1, 'var':'ica_hvaNL'},
+##                               'lva_apic_distal_91': {'sec':'apic_91', 'loc':1, 'var':'ica_lva'},
+                    
+                               'V_dend_73': {'sec':'dend_73', 'loc':0.5, 'var':'v'},
+##                               'iN_dend_73': {'sec':'dend_73', 'loc':1, 'var':'iN_caN'},
+##                               'iL_dend_73': {'sec':'dend_73', 'loc':1, 'var':'iL_caL'},
+##                               'P_dend_73': {'sec':'dend_73', 'loc':1, 'var':'ica_hvaP'},
+##                               'NL_dend_73': {'sec':'dend_73', 'loc':1, 'var':'ica_hvaNL'},
+##                               'lva_dend_73': {'sec':'dend_73', 'loc':1, 'var':'ica_lva'},
+##                               'iN_dend_73': {'sec':'dend_73', 'loc':1, 'var':'iN_caN'},
+##                               'iL_dend_73': {'sec':'dend_73', 'loc':1, 'var':'iL_caL'},
+##                               'P_dend_73': {'sec':'dend_73', 'loc':1, 'var':'ica_hvaP'},
+##                               'NL_dend_73': {'sec':'dend_73', 'loc':1, 'var':'ica_hvaNL'},
+##                               'lva_dend_73': {'sec':'dend_73', 'loc':1, 'var':'ica_lva'},
+                    
+                               'V_dend_0': {'sec':'dend_0', 'loc':0.5, 'var':'v'},
+##                               'iN_dend_0': {'sec':'dend_0', 'loc':1, 'var':'iN_caN'},
+##                               'iL_dend_0': {'sec':'dend_0', 'loc':1, 'var':'iL_caL'},
+##                               'P_dend_0': {'sec':'dend_0', 'loc':1, 'var':'ica_hvaP'},
+##                               'NL_dend_0': {'sec':'dend_0', 'loc':1, 'var':'ica_hvaNL'},
+##                               'lva_dend_0': {'sec':'dend_0', 'loc':1, 'var':'ica_lva'},
+##                               'iN_dend_0': {'sec':'dend_0', 'loc':1, 'var':'iN_caN'},
+##                               'iL_dend_0': {'sec':'dend_0', 'loc':1, 'var':'iL_caL'},
+##                               'P_dend_0': {'sec':'dend_0', 'loc':1, 'var':'ica_hvaP'},
+##                               'NL_dend_0': {'sec':'dend_0', 'loc':1, 'var':'ica_hvaNL'},
+##                               'lva_dend_0': {'sec':'dend_0', 'loc':1, 'var':'ica_lva'},
+                    
+                               'V_dend_5': {'sec':'dend_5', 'loc':0.5, 'var':'v'},
+##                               'iN_dend_5': {'sec':'dend_5', 'loc':1, 'var':'iN_caN'},
+##                               'iL_dend_5': {'sec':'dend_5', 'loc':1, 'var':'iL_caL'},
+##                               'P_dend_5': {'sec':'dend_5', 'loc':1, 'var':'ica_hvaP'},
+##                               'NL_dend_5': {'sec':'dend_5', 'loc':1, 'var':'ica_hvaNL'},
+##                               'lva_dend_5': {'sec':'dend_5', 'loc':1, 'var':'ica_lva'},
+##                               'iN_dend_5': {'sec':'dend_5', 'loc':1, 'var':'iN_caN'},
+##                               'iL_dend_5': {'sec':'dend_5', 'loc':1, 'var':'iL_caL'},
+##                               'P_dend_5': {'sec':'dend_5', 'loc':1, 'var':'ica_hvaP'},
+##                               'NL_dend_5': {'sec':'dend_5', 'loc':1, 'var':'ica_hvaNL'},
+##                               'lva_dend_5': {'sec':'dend_5', 'loc':1, 'var':'ica_lva'},
+                    }
+##,
+##                    
+##                    
+##                    'V_apic_distal': {'sec':'apic_95', 'loc':0.2222, 'var':'v'},
+##                    'BK_apic_distal': {'sec':'apic_95', 'loc':0.2222, 'var':'minf_kBK'}, 
+##                    'P_apic_distal': {'sec':'apic_95', 'loc':0.2222, 'var':'minf_caP'}, 
+##                    'L_apic_distal': {'sec':'apic_95', 'loc':0.2222, 'var':'minf_caL'},
+##                    'L2_apic_distal': {'sec':'apic_95', 'loc':0.2222, 'var':'linf_caL'},
+##                    'N_apic_distal': {'sec':'apic_95', 'loc':0.2222, 'var':'minf_caN'},
+##                    'CaP_apic_distal': {'sec':'apic_95', 'loc':0.2222, 'var':'ca_hvaPi'}, 
+##                    'CaNL_apic_distal': {'sec':'apic_95', 'loc':0.2222, 'var':'ca_hvaNLi'},
+##                    'CaT_apic_distal': {'sec':'apic_95', 'loc':0.2222, 'var':'ca_lvai'}}
+##                    'V_apic_distal_68': {'sec':'apic_68', 'loc':0.1009, 'var':'v'},
+##                    'V_apic_distal_77': {'sec':'apic_77', 'loc':0.9708, 'var':'v'},
+##                    'V_apic_distal_95': {'sec':'apic_95', 'loc':0.2222, 'var':'v'},
+##                    'V_apic_distal_101': {'sec':'apic_101', 'loc':0.7173, 'var':'v'},
+##                    'V_apic_distal_110': {'sec':'apic_110', 'loc':0.9225, 'var':'v'}}
 
 cfg.recordLFP = [[150, y, 150] for y in range(200,1300,100)] # [[150, y, 150] for y in range(200,1300,100)]
 
@@ -62,20 +140,20 @@ cfg.saveLFPPops =  False # allpops
 cfg.recordDipoles = False # {'L2': ['IT2'], 'L4': ['IT4'], 'L5': ['IT5A', 'IT5B', 'PT5B']}
 
 cfg.recordStim = False
-cfg.recordTime = False  
+cfg.recordTime = True  
 cfg.recordStep = 0.025
 
 
 #------------------------------------------------------------------------------
 # Saving
 #------------------------------------------------------------------------------
-cfg.simLabel = 'v56_tune3'
-cfg.saveFolder = '../data/v56_manualTune'
+cfg.simLabel = 'default'
+cfg.saveFolder = '../data/' + cfg.simLabel
 cfg.savePickle = True
 cfg.saveJson = False
-cfg.saveDataInclude = ['simData', 'simConfig', 'netParams']#, 'net']
+cfg.saveDataInclude = ['simData', 'simConfig', 'netParams'] #, 'net']
 cfg.backupCfgFile = None #['cfg.py', 'backupcfg/'] 
-cfg.gatherOnlySimData = False
+cfg.gatherOnlySimData = True
 cfg.saveCellSecs = False
 cfg.saveCellConns = False
 cfg.compactConnFormat = 0
@@ -98,8 +176,8 @@ cfg.analysis['plotTraces'] = {'include': [], 'timeRange': [0, cfg.duration], 'on
 #------------------------------------------------------------------------------
 # Synapses
 #------------------------------------------------------------------------------
-cfg.synWeightFractionEE = [0.5, 0.5] # E->E AMPA to NMDA ratio
-cfg.synWeightFractionSOME = [0.9, 0.1] # SOM -> E GABAASlow to GABAB ratio
+cfg.synWeightFractionEE = [0.485, 0.515] # E->E AMPA to NMDA ratio
+cfg.synWeightFractionIE = [0.747, 0.253] # SOM -> E GABAASlow to GABAB ratio
 
 cfg.synsperconn = 5
 cfg.AMPATau2Factor = 1.0
@@ -110,11 +188,11 @@ cfg.AMPATau2Factor = 1.0
 cfg.weightNorm = 1  # use weight normalization
 cfg.weightNormThreshold = 4.0  # weight normalization factor threshold
 
-cfg.scale = 0.3
-cfg.sizeY = 1350.0
-cfg.sizeX = 300.0
-cfg.sizeZ = 300.0
-cfg.correctBorderThreshold = 150.0
+cfg.scale = 1
+cfg.sizeY = 930.0
+cfg.sizeX = 1000.0
+cfg.sizeZ = 1000.0
+#cfg.correctBorderThreshold = 150.0
 
 cfg.L5BrecurrentFactor = 1.0
 cfg.ITinterFactor = 1.0
@@ -152,11 +230,34 @@ cfg.noiseShort = 1.0  # firing rate random noise
 cfg.delayShort = 5.0  # (ms)
 cfg.weightShort = 0.5  # corresponds to unitary connection somatic EPSP (mV)
 cfg.startShort = 0  # start at 0 ms
-cfg.ratesShort = {'IT2': [0,5], 'IT4': [0,2.5], 'IT5A': [0,5], 'IT5B': [0,5], 'IT6': [0,2.5], 'CT6': [0,2.5], 'PT5B': [0,2.5],
-                  'SOM2': [0,2.5], 'SOM5A': [0,5], 'SOM5B': [0,5], 'SOM6': [0,5],
-                  'PV2': [0,2.5], 'PV5A': [0,5], 'PV5B': [0,5], 'PV6': [0,5]}
+cfg.ratesShort = {'ENGF':10, 'IT2/3/4':0.6, 'IT5':4, 'IT6':0.6, 'PT5B':6.4,
+                  'SOM':10, 'PV':10, 'VM':20, 'CX':5}
 
 
+
+#cfg.numCells = {'IT6':262, 'SOM-T':336, 'ENGF':17, 'IT2/3/4':288, 'SOM-FO':45, 'SOM-NMC':17, 'IT5':119+542, 'PT5B':362, 'PV':46, 'CX':271, 'SOM-OTHERS':150, 'VM_L1':25, 'VM_L5':25}
+vm_n = 8
+
+cfg.numCells = {'IT6':262, 'SOM-T':336, 'ENGF':17, 'IT2/3/4':288, 'SOM-FO':45, 'SOM-NMC':17, 'IT5':119+542, 'PT5B':362, 'PV':46, 'CX':271, 'SOM-OTHERS':175, 'VM_L1':vm_n, 'VM_L5':int(round(vm_n * 6.4/2.6)) }
+
+ginh1 = 0.0002
+ginh4 = 0.00095
+ginh2 = ginh4 * 4
+ginh3 = 0.0002
+
+gexc1 = 0.0025
+gexc2 = 0.001
+
+cfg.g = {'IT6':gexc1, 'SOM-T':ginh1, 'ENGF':ginh1, 'IT2/3/4':(gexc1 + gexc2) / 2, 'SOM-FO':ginh3, 'SOM-NMC':ginh3, 'IT5':gexc2, 'PT5B':gexc2, 'PV':ginh2, 'CX':(gexc1 + gexc2) / 2, 'SOM-OTHERS':ginh4, 'VM_L1':gexc1, 'VM_L5':gexc2}
+
+
+if '--parkinsonian' in sys.argv:
+    cfg.numCells['VM_L1'] = int(round(cfg.numCells['VM_L1'] * 0.73))
+    cfg.numCells['VM_L5'] = int(round(cfg.numCells['VM_L5'] * 0.65))
+    cfg.g['VM_L1'] = cfg.g['VM_L1'] / 0.73
+    cfg.g['VM_L5'] = cfg.g['VM_L5'] / 0.65
+
+    
 ## input pulses
 cfg.addPulses = 1
 cfg.pulse = {'pop': 'None', 'start': 1000, 'end': 1200, 'rate': [0, 20], 'noise': 0.8}
@@ -179,3 +280,17 @@ cfg.addNetStim = 0
  			   ## pop, sec, loc, synMech, start, interval, noise, number, weight, delay 
 cfg.NetStim1 = {'pop': 'IT2', 'ynorm':[0,1], 'sec': 'soma', 'loc': 0.5, 'synMech': ['AMPA'], 'synMechWeightFactor': [1.0],
 				'start': 500, 'interval': 1000.0/60.0, 'noise': 0.0, 'number': 60.0, 'weight': 30.0, 'delay': 0}
+
+
+try:
+  import pickle
+  import sys
+  
+  configs = pickle.load(open(sys.argv[sys.argv.index('--simname')+1], 'rb'))
+
+  cfg.duration = configs['tstop']
+  cfg.simLabel = configs['output']; cfg.saveFolder = '../data/' + cfg.simLabel
+
+  cfg.seeds = {'conn': configs['seed'], 'stim': configs['seed']+1, 'loc': configs['seed']+2} 
+except:
+  pass

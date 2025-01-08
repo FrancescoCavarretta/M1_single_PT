@@ -6,7 +6,7 @@ NEURON {
 	SUFFIX caL
 	USEION ca_hvaNL READ ca_hvaNLi WRITE ica_hvaNL
 	USEION ca READ cai, cao
-	RANGE pbar, q10, minf, linf
+	RANGE pbar, q10, minf, linf, iL
 
 	GLOBAL vshift, mtau_factor, mtau_min, ltau_factor, linf_min, nlinf, klinf
 	GLOBAL mk_factor
@@ -59,6 +59,7 @@ ASSIGNED {
 
 	linf		(1)
 	taul		(ms)
+        iL	(mA/cm2)
 }
 
 
@@ -70,6 +71,7 @@ STATE {
 
 BREAKPOINT {
 	SOLVE states METHOD cnexp
+        iL = pbar * m*m * l * ghk(v, cai, cao)
 	ica_hvaNL = pbar * m*m * l * ghk(v, cai, cao)
 }
 
@@ -133,8 +135,6 @@ FUNCTION efun(z) {
 		efun = 1
 	} else if(z >= 700) {
 		efun = 0
-	} else if(z <= -700) {
-		efun = -z
 	} else {
 		efun = z / (exp(z) - 1)
 	}

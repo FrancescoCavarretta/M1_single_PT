@@ -4517,6 +4517,11 @@ proc biophys() { local sh
 	}
 
 	forall {
+		gbar_kBK = 0
+		for(x, 0) gbar_naP(x) *= 0.4
+	}
+
+	forall {
 		cao = ca_lvao = ca_hvaPo = ca_hvaNLo = 1
 	}
 }

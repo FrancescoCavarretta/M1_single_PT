@@ -65,10 +65,10 @@ ENDCOMMENT
 
 NEURON {
 	POINT_PROCESS NMDA
-	RANGE g, Alpha, Beta, e, gmax, ica, Cdur, iNMDA, B
+	RANGE g, e, gmax, ica, Cdur, iNMDA, B, R, Ron, Roff, tau1, tau2
 	USEION ca WRITE ica
 	NONSPECIFIC_CURRENT  iNMDA
-	GLOBAL mg, Cmax, mgvh
+	:GLOBAL mg, Cmax, mgvh
 }
 UNITS {
 	(nA) = (nanoamp)
@@ -78,15 +78,17 @@ UNITS {
 }
 
 PARAMETER {
-	Cmax	= 1	 (mM)           : max transmitter concentration
-	Cdur	= 1	 (ms)		: transmitter duration (rising phase)
-	Alpha	= 4 (/ms /mM)	: forward (binding) rate (4)
-	Beta 	= 0.01 (/ms)   : 0.01   (/ms)   : backward (unbinding) rate
+	:Cmax	= 1	 (mM)           : max transmitter concentration
+	:Cdur	= 1	 (ms)		: transmitter duration (rising phase)
+	:Alpha	= 4 (/ms /mM)	: forward (binding) rate (4)
+	:Beta 	= 0.01 (/ms)   : 0.01   (/ms)   : backward (unbinding) rate
 	e	= 0	 (mV)		: reversal potential
         mg   = 1      (mM)           : external magnesium concentration
 	gmax = 1   (uS)
         mgvh = 0 (mV)
         mgk  = 0.062 (/mV)
+        tau1 = 15  (ms)
+        tau2 = 150 (ms)
 
 }
 
@@ -95,11 +97,14 @@ ASSIGNED {
 	v		(mV)		: postsynaptic voltage
 	iNMDA 		(nA)		: current = g*(v - e)
 	g 		(uS)		: conductance
-	Rinf				: steady state channels open
-	Rtau		(ms)		: time constant of channel binding
+	:Rinf				: steady state channels open
+	:Rtau		(ms)		: time constant of channel binding
 	synon
         :B                       : magnesium block
 	ica
+        Rmax
+        Cdur
+        R
 }
 
 STATE {
@@ -108,32 +113,35 @@ STATE {
 }
 
 INITIAL {
-	Rinf = Cmax*Alpha / (Cmax*Alpha + Beta)
-	Rtau = 1 / (Cmax*Alpha + Beta)
+	:Rinf = Cmax*Alpha / (Cmax*Alpha + Beta)
+	:Rtau = 1 / (Cmax*Alpha + Beta)
 	synon = 0
         B = mgblock(v)
+        Cdur = tau1 / 2 * 3
+        Rmax = exp(-Cdur / tau1)
 }
 
 BREAKPOINT {
 	SOLVE release METHOD cnexp
-        :B = mgblock(v)
-	g = (Ron + Roff)* gmax * B
+        B = mgblock(v)
+        R = (Ron + Roff) / Rmax
+	g = R * gmax * B
 	iNMDA = g*(v - e)
-    ica = 7*iNMDA/10   :(5-10 times more permeable to Ca++ than Na+ or K+, Ascher and Nowak, 1988)
-    iNMDA = 3*iNMDA/10
+        ica = 7*iNMDA/10   :(5-10 times more permeable to Ca++ than Na+ or K+, Ascher and Nowak, 1988)
+        iNMDA = 3*iNMDA/10
 
 }
 
 DERIVATIVE release {
-	Ron' = (synon*Rinf - Ron)/Rtau
-	Roff' = -Beta*Roff
+	Ron' = (synon - Ron) / tau1
+	Roff' = -Roff / tau2
         B' = (mgblock(v) - B) / 4.5
 }
 
 FUNCTION mgblock(v(mV)) {
-        TABLE
-        DEPEND mg
-        FROM -140 TO 80 WITH 1000
+        :TABLE
+        :DEPEND mg
+        :FROM -140 TO 80 WITH 1000
 
         : from Jahr & Stevens
 
@@ -154,18 +162,19 @@ NET_RECEIVE(weight, on, nspike, r0, t0 (ms)) {
         if (flag == 0) { : a spike, so turn on if not already in a Cdur pulse
 		nspike = nspike + 1
 		if (!on) {
-			r0 = r0*exp(-Beta*(t - t0))
+			r0 = r0 * exp(-(t - t0) / tau1)
 			t0 = t
-			on = 1
 			synon = synon + weight
 			state_discontinuity(Ron, Ron + r0)
 			state_discontinuity(Roff, Roff - r0)
+			on = 1
 		}
-:		 come again in Cdur with flag = current value of nspike
+                         
+		: come again in Cdur with flag = current value of nspike
 		net_send(Cdur, nspike)
-       }
+        }
 	if (flag == nspike) { : if this associated with last spike then turn off
-		r0 = weight*Rinf + (r0 - weight*Rinf)*exp(-(t - t0)/Rtau)
+		r0 = weight + (r0 - weight) * exp(-(t - t0)/tau1)
 		t0 = t
 		synon = synon - weight
 		state_discontinuity(Ron, Ron - r0)

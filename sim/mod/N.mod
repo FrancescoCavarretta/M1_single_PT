@@ -8,7 +8,7 @@ NEURON {
 	SUFFIX caN
 	USEION ca_hvaNL READ ca_hvaNLi WRITE ica_hvaNL
 	USEION ca READ cai, cao
-	RANGE pbar, q10, minf
+	RANGE pbar, q10, minf, iN, mtau
 	GLOBAL vshift, mtau_factor, mtau_min, ltau_factor, linf_min, nlinf, klinf
 	GLOBAL mk_factor
 }
@@ -60,6 +60,7 @@ ASSIGNED {
 
 	linf		(1)
 	ltau		(ms)
+        iN	(mA/cm2)
 }
 
 
@@ -71,6 +72,7 @@ STATE {
 
 BREAKPOINT {
 	SOLVE states METHOD cnexp
+        iN = pbar * m * l * (v - 120) :ghk(v, cai, cao)
 	ica_hvaNL = pbar * m * l * ghk(v, cai, cao)
 }
 
@@ -106,8 +108,6 @@ FUNCTION efun(z) {
 		efun = 1
 	} else if(z >= 700) {
 		efun = 0
-	} else if(z <= -700) {
-		efun = -z
 	} else {
 		efun = z / (exp(z) - 1)
 	}
@@ -119,7 +119,11 @@ PROCEDURE rates(v (mV), cai (mM)) {
 	if (v <= -2.5) {
 		mtau = (mtau_min + mtau_factor * safe_exp((v + 2.5) / 17.1) + 0.1) / q
 	} else {
-		mtau = (mtau_min + mtau_factor * safe_exp(-(v + 2.5) / 28.2) + 0.1) / q
+          if(v >= 25) {
+            mtau = (mtau_min + mtau_factor * safe_exp(-(25 + 2.5) / 28.2) + 0.1) / q
+          } else {
+	    mtau = (mtau_min + mtau_factor * safe_exp(-(v + 2.5) / 28.2) + 0.1) / q
+          }
 	}
 
 	: voltage-dependent activation

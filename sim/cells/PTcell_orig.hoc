@@ -4366,7 +4366,7 @@ proc biophys() { local sh
   
   forsec CellRef.all {
     ena = 50
-    ek = -85 //-102
+    ek = -102
     ehcn_iH = -45
     Ra = 150
     g_pas = 3.3000000000000003e-05
@@ -4514,10 +4514,6 @@ proc biophys() { local sh
 		mtau_factor_kBK = 1
 		mtau_min_kBK = 0
 		mk_factor_kBK = 0.5
-	}
-
-	forall {
-		cao = ca_lvao = ca_hvaPo = ca_hvaNLo = 1
 	}
 }
 
